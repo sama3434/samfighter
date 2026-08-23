@@ -43,13 +43,23 @@ describe('round flow', () => {
     expect(p1.wins).toBe(C.WINS_NEEDED);
   });
 
-  it('enter restarts the match', () => {
+  it('enter restarts a match in progress', () => {
     const { match, p1, input, step } = makeMatch();
     p1.wins = 1;
     input.pressed.add('enter');
     step(1);
     expect(p1.wins).toBe(0);
     expect(match.round).toBe(1);
+  });
+
+  it('leaves matchEnd alone so the app can return to the roster', () => {
+    const { match, p1, input, step } = makeMatch();
+    match.phase = 'matchEnd';
+    p1.wins = 2;
+    input.pressed.add('enter');
+    step(1);
+    expect(match.phase).toBe('matchEnd');
+    expect(p1.wins).toBe(2);
   });
 
   it('hitstop freezes the fighters but not the frame counter', () => {

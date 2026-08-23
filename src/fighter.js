@@ -6,13 +6,14 @@ const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 /* One fighter: physics, stance, and the attack state machine.
    Knows nothing about drawing or about the match around it. */
 export class Fighter {
-  constructor({ name, startX, facing, scheme, input, palette, hudColour }) {
-    this.name = name;
+  constructor({ startX, facing, scheme, input, character, slot, hudColour, name }) {
+    this.character = character;      // roster entry: build + palettes
+    this.slot = slot;                // 'p1' | 'p2', picks the palette and HUD colour
+    this.name = name || character.name;
     this.startX = startX;
     this.startFacing = facing;
     this.scheme = scheme;
     this.input = input;              // { held: Set, pressed: Set }
-    this.palette = palette;          // key into the sprite palettes
     this.hudColour = hudColour;
     this.wins = 0;
     this.reset();

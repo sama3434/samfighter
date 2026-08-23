@@ -3,7 +3,19 @@
 A local 1v1 pixel-art fighting game for the browser. Two players, one keyboard, no
 build step and no dependencies — plain HTML, CSS and canvas.
 
-Four stages rotate as the match goes on: **temple**, **pyramids**, **city**, **mountain**.
+Pick a fighter, then fight. Four stages rotate as the match goes on: **temple**,
+**pyramids**, **city**, **mountain**.
+
+## Roster
+
+| | |
+|---|---|
+| **KAI** | Headband, spiky hair, heavier build |
+| **MIRA** | Ponytail, lighter build, quicker silhouette |
+
+They share the same frame data for now — the difference is look, not moves. Mirror
+matches work: the character is palette-swapped so player one is always the cool colours
+and player two the warm ones.
 
 ## Play
 
@@ -18,6 +30,8 @@ load over `file://`, so it needs a server even though nothing is compiled.
 
 | | Player 1 | Player 2 |
 |---|---|---|
+| Browse the roster | `A` / `D` | `←` / `→` |
+| Lock in / cancel | `F` / `H` | `,` / `/` |
 | Move | `A` / `D` | `←` / `→` |
 | Jump | `W` | `↑` |
 | Crouch | `S` | `↓` |
@@ -32,7 +46,8 @@ load over `file://`, so it needs a server even though nothing is compiled.
 - Walking backwards is slower than walking forwards.
 - First to 2 rounds wins. Rounds are 60 seconds; on time-out the healthier fighter
   takes it, and equal health is a draw.
-- `Enter` restarts the match at any time.
+- `Enter` restarts a match in progress; once someone has won, it returns you to the
+  character select.
 
 ## Layout
 
@@ -42,6 +57,8 @@ style.css           page chrome
 serve.sh            local server
 src/
   config.js         world constants and tuning
+  characters.js     the roster: builds and palettes
+  select.js         character select state
   moves.js          frame data for every attack
   fighter.js        physics, stance, attack state machine
   combat.js         hit resolution, blocking, pushing apart
@@ -49,7 +66,7 @@ src/
   input.js          key state and control schemes
   audio.js          synthesized sound
   pixel/            buffer, primitives, dithering, outline, bitmap font
-  render/           poses, fighter sprites, HUD, frame composition
+  render/           poses, fighter sprites, HUD, select screen, frame composition
   stages/           one module per stage, plus the registry
 tests/              browser test suite
 ```
@@ -79,7 +96,10 @@ in visible squares.
 **Fighters** are drawn procedurally rather than from sprite sheets: a posed skeleton
 (`render/poses.js`) rendered as tapered limbs in three tones, then given a silhouette
 keyline. Every pose returns the same joints, so limb lengths stay consistent between
-animations and a new move needs only a pose branch.
+animations and a new move needs only a pose branch. A character supplies the limb
+widths and hair style, so the roster is data rather than a second set of drawing code —
+and the select screen draws its portraits with the same function the match uses, so the
+art can never drift out of sync with what you actually get.
 
 **Stages** are painted once into a cached canvas; only the animated overlay — petals,
 snow, birds, neon flicker — is redrawn per frame.

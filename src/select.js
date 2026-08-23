@@ -1,0 +1,88 @@
+import { CHARACTERS } from './characters.js';
+
+/* Character select.
+
+   Pure state: each player moves a cursor and locks in, and once both have
+   locked the screen counts down and hands back the picks. Holds no canvas
+   work, so it can be stepped in a test the same way the match can. */
+
+const LAUNCH_DELAY = 45;   // frames held on "ready" before the match starts
+
+export class SelectScreen {
+  constructor({ schemes, roster = CHARACTERS, sound = null }) {
+    this.schemes = schemes;
+    this.roster = roster;
+    this.sound = sound;
+    this.reset();
+  }
+
+  reset() {
+    this.cursor = [0, Math.min(1, this.roster.length - 1)];
+    this.locked = [false, false];
+    this.countdown = 0;
+    this.frame = 0;
+    this.done = false;
+    this.nudge = [0, 0];       // frames of cursor-move animation left
+  }
+
+  get bothLocked() { return this.locked[0] && this.locked[1]; }
+
+  characterFor(player) { return this.roster[this.cursor[player]]; }
+
+  /** Result once done: the two chosen roster entries. */
+  get picks() {
+    return [this.characterFor(0), this.characterFor(1)];
+  }
+
+  move(player, dir) {
+    if (this.locked[player]) return;
+    const n = this.roster.length;
+    this.cursor[player] = (this.cursor[player] + dir + n) % n;
+    this.nudge[player] = 6;
+    if (this.sound) this.sound.whiff();
+  }
+
+  lock(player) {
+    if (this.locked[player]) return;
+    this.locked[player] = true;
+    if (this.sound) this.sound.block();
+  }
+
+  unlock(player) {
+    if (!this.locked[player]) return;
+    this.locked[player] = false;
+    this.countdown = 0;
+    if (this.sound) this.sound.whiff();
+  }
+
+  /** One tick. Returns the picks on the frame the screen finishes, else null. */
+  update(input) {
+    this.frame++;
+    for (let i = 0; i < 2; i++) if (this.nudge[i] > 0) this.nudge[i]--;
+
+    for (let player = 0; player < 2; player++) {
+      const keys = this.schemes[player];
+      if (input.pressed.has(keys.left)) this.move(player, -1);
+      if (input.pressed.has(keys.right)) this.move(player, 1);
+      if (input.pressed.has(keys.punch) || input.pressed.has(keys.kick)) this.lock(player);
+      if (input.pressed.has(keys.block)) this.unlock(player);
+    }
+
+    if (this.bothLocked) {
+      this.countdown++;
+      if (this.countdown === 1 && this.sound) this.sound.bell();
+      if (this.countdown >= LAUNCH_DELAY) {
+        this.done = true;
+        input.pressed.clear();
+        return this.picks;
+      }
+    } else {
+      this.countdown = 0;
+    }
+
+    input.pressed.clear();
+    return null;
+  }
+}
+
+export { LAUNCH_DELAY };

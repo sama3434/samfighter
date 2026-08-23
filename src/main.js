@@ -1,27 +1,68 @@
 import * as C from './config.js';
 import { Fighter } from './fighter.js';
 import { Match } from './match.js';
+import { SelectScreen } from './select.js';
+import { CHARACTERS } from './characters.js';
 import { SCHEMES, input, attachInput } from './input.js';
 import { Sound } from './audio.js';
 import { STAGES, warmStages, seedDrifters } from './stages/index.js';
 import { renderFrame } from './render/scene.js';
+import { renderSelect } from './render/select.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
-const p1 = new Fighter({
-  name: 'PLAYER 1', startX: 300, facing: 1, scheme: SCHEMES[0], input,
-  palette: 'p1', hudColour: '#8fc0f8',
-});
-const p2 = new Fighter({
-  name: 'PLAYER 2', startX: 660, facing: -1, scheme: SCHEMES[1], input,
-  palette: 'p2', hudColour: '#ff9b8c',
-});
+/* Two screens: pick your fighter, then fight. The select screen owns the
+   picks; the match is rebuilt from them each time so a rematch can change
+   characters. */
+const select = new SelectScreen({ schemes: SCHEMES, roster: CHARACTERS, sound: Sound });
+let screen = 'select';
+let match = null;
 
-const match = new Match({ p1, p2, stages: STAGES, sound: Sound });
-match.onStageChange = (stage) => seedDrifters(stage.drift);
-seedDrifters(match.stage.drift);
+function startMatch([first, second]) {
+  const p1 = new Fighter({
+    startX: 300, facing: 1, scheme: SCHEMES[0], input,
+    character: first, slot: 'p1', hudColour: '#8fc0f8',
+  });
+  const p2 = new Fighter({
+    startX: 660, facing: -1, scheme: SCHEMES[1], input,
+    character: second, slot: 'p2', hudColour: '#ff9b8c',
+  });
+
+  // a mirror match needs the names distinguished, or the HUD lies
+  if (first === second) {
+    p1.name = `${first.name} 1P`;
+    p2.name = `${second.name} 2P`;
+  }
+
+  match = new Match({ p1, p2, stages: STAGES, sound: Sound });
+  match.onStageChange = (stage) => seedDrifters(stage.drift);
+  seedDrifters(match.stage.drift);
+  screen = 'match';
+}
+
+function tick() {
+  if (screen === 'select') {
+    const picks = select.update(input);
+    if (picks) startMatch(picks);
+    return;
+  }
+
+  // once the match is over, Enter goes back to the roster
+  if (match.phase === 'matchEnd' && input.pressed.has('enter')) {
+    input.pressed.clear();
+    select.reset();
+    screen = 'select';
+    return;
+  }
+  match.update(input);
+}
+
+function draw() {
+  if (screen === 'select') renderSelect(ctx, select, CHARACTERS);
+  else renderFrame(ctx, match);
+}
 
 attachInput(window, () => Sound.unlock());
 warmStages();
@@ -36,14 +77,18 @@ function frame(now) {
   accumulator += Math.min(now - last, 250);   // cap catch-up after a tab stall
   last = now;
   while (accumulator >= C.STEP) {
-    match.update(input);
+    tick();
     accumulator -= C.STEP;
   }
-  renderFrame(ctx, match);
+  draw();
   requestAnimationFrame(frame);
 }
 
 requestAnimationFrame(frame);
 
-// exposed for the browser test page and for poking at a live match in devtools
-window.SAMFIGHTER = { match, p1, p2, input, C };
+// exposed for the browser test page and for poking at a live game in devtools
+window.SAMFIGHTER = {
+  get match() { return match; },
+  get screen() { return screen; },
+  select, input, C, CHARACTERS, startMatch,
+};

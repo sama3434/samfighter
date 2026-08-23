@@ -1,6 +1,7 @@
 import { Fighter } from '../src/fighter.js';
 import { Match } from '../src/match.js';
 import { SCHEMES } from '../src/input.js';
+import { CHARACTERS } from '../src/characters.js';
 
 /* Test doubles: fighters driven by a bare input pair, and a match on fake
    stages so nothing here touches a canvas. */
@@ -13,7 +14,7 @@ export function makeFighter(overrides = {}) {
   return new Fighter({
     name: 'P', startX: 300, facing: 1, scheme: SCHEMES[0],
     input: overrides.input || makeInput(),
-    palette: 'p1', hudColour: '#fff',
+    character: CHARACTERS[0], slot: 'p1', hudColour: '#fff',
     ...overrides,
   });
 }
@@ -28,8 +29,8 @@ export const FAKE_STAGES = [
 /** A match already in the fight phase, with both fighters under test control. */
 export function makeMatch() {
   const input = makeInput();
-  const p1 = makeFighter({ name: 'PLAYER 1', startX: 300, facing: 1, input, scheme: SCHEMES[0] });
-  const p2 = makeFighter({ name: 'PLAYER 2', startX: 660, facing: -1, input, scheme: SCHEMES[1] });
+  const p1 = makeFighter({ name: 'PLAYER 1', startX: 300, facing: 1, input, scheme: SCHEMES[0], slot: 'p1' });
+  const p2 = makeFighter({ name: 'PLAYER 2', startX: 660, facing: -1, input, scheme: SCHEMES[1], slot: 'p2' });
   const match = new Match({ p1, p2, stages: FAKE_STAGES });
 
   const step = (n = 1) => { for (let i = 0; i < n; i++) match.update(input); };

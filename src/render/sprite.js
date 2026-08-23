@@ -2,16 +2,16 @@ import { GROUND } from '../config.js';
 import { pctx, wp, PGROUND } from '../pixel/buffer.js';
 import { pxRect, pxTaper, pxCircle, pxEllipse, pxLine } from '../pixel/draw.js';
 import { applyOutline } from '../pixel/outline.js';
-import { PALETTES, OUTLINE } from './palettes.js';
+import { OUTLINE } from './palettes.js';
 import { poseOf } from './poses.js';
 
 /* A fighter is composed in this scratch buffer, given a silhouette keyline,
    and then blitted (mirrored if needed) into the scene. Sized to hold the
    longest reach -- a fully extended kick -- plus the knockdown sprawl. */
 const SPR_W = 168, SPR_H = 144;
-const SPR_AX = 60, SPR_AY = 128;    // anchor: the fighter's feet
+export const SPR_AX = 60, SPR_AY = 128;    // anchor: the fighter's feet
 
-const scratch = document.createElement('canvas');
+export const scratch = document.createElement('canvas');
 scratch.width = SPR_W;
 scratch.height = SPR_H;
 const sctx = scratch.getContext('2d');
@@ -36,6 +36,11 @@ function limb(x0, y0, x1, y1, w0, w1, base, hi, lo) {
   if (w0 > 9) taper(x0 + 2, y0 + 2, x1 + 2, y1 + 2, w0 - 8, w1 - 8, hi);
 }
 
+function limbTail(x0, y0, x1, y1, w0, w1, base, hi) {
+  taper(x0, y0, x1, y1, w0, w1, base);
+  taper(x0 + 1, y0 + 1, x1 + 1, y1 + 1, w0 - 4, w1 - 3, hi);
+}
+
 function foot(x, y, p, striking) {
   const w = striking ? 17 : 15;
   rect(x - 5, y, w, 7, p.skinLo);          // sole resting on the floor
@@ -52,7 +57,7 @@ function fist(x, y, p, big) {
   pxRect(sctx, SX(x) - Math.floor(s / 2) - 1, SY(y) - 1, 3, 5, p.band);
 }
 
-function head(x, y, p, pose) {
+function head(x, y, p, pose, build, frame) {
   // neck first, so the jaw overlaps it
   rect(x - 4, y - 16, 10, 8, p.skinLo);
   rect(x - 3, y - 16, 7, 8, p.skin);
@@ -60,6 +65,16 @@ function head(x, y, p, pose) {
   // hair mass sits behind and above the face
   circle(x - 2, y + 2, 14, p.hair);
   rect(x - 15, y - 5, 10, 13, p.hair);
+
+  if (build.hair === 'ponytail') {
+    // a tail gathered high at the back, swinging a little as they move
+    const sway = Math.sin(frame * 0.09) * 2;
+    circle(x - 13, y + 8, 6, p.hair);
+    limbTail(x - 14, y + 7, x - 26 + sway, y - 4 + sway, 9, 5, p.hair, p.hairHi);
+    circle(x - 27 + sway, y - 5 + sway, 4, p.hairHi);
+    rect(x - 17, y + 5, 7, 4, p.band);          // hair tie
+    rect(x - 17, y + 5, 7, 1, p.bandLo);
+  }
 
   circle(x + 2, y, 13, p.skinLo);
   circle(x + 3, y + 1, 12, p.skin);
@@ -76,28 +91,38 @@ function head(x, y, p, pose) {
   rect(x + 11, y - 1, 2, 3, p.skinLo);
   rect(x + 5, y - 5, 5, 1, pose.kind === 'hurt' ? '#8a3a3a' : p.skinLo);
 
-  // headband across the brow, ties trailing behind
-  rect(x - 9, y + 7, 22, 4, p.band);
-  rect(x - 9, y + 7, 22, 1, p.bandLo);
-  line(x - 9, y + 9, x - 22, y + 13, 3, p.band);
-  line(x - 14, y + 10, x - 26, y + 6, 3, p.bandLo);
+  if (build.headband) {
+    // headband across the brow, ties trailing behind
+    rect(x - 9, y + 7, 22, 4, p.band);
+    rect(x - 9, y + 7, 22, 1, p.bandLo);
+    line(x - 9, y + 9, x - 22, y + 13, 3, p.band);
+    line(x - 14, y + 10, x - 26, y + 6, 3, p.bandLo);
+  } else {
+    rect(x - 8, y + 8, 20, 3, p.hair);          // fringe instead
+    rect(x + 2, y + 8, 9, 2, p.hairHi);
+  }
 
-  // hair spikes over the band
-  rect(x - 6, y + 11, 6, 4, p.hair);
-  rect(x + 1, y + 11, 5, 3, p.hairHi);
+  if (build.hair === 'spiky') {
+    rect(x - 6, y + 11, 6, 4, p.hair);
+    rect(x + 1, y + 11, 5, 3, p.hairHi);
+  } else {
+    rect(x - 4, y + 11, 11, 3, p.hair);
+    rect(x + 2, y + 12, 5, 2, p.hairHi);
+  }
 }
 
-function torso(hx, hy, sx, sy, p) {
-  limb(hx, hy, sx, sy, 24, 30, p.gi, p.giHi, p.giLo);
+function torso(hx, hy, sx, sy, p, build) {
+  const { waist, chest, shoulder } = build;
+  limb(hx, hy, sx, sy, waist, chest, p.gi, p.giHi, p.giLo);
   // shoulder yoke
-  rect(sx - 15, sy - 3, 30, 10, p.gi);
-  rect(sx - 15, sy + 7, 30, 2, p.giHi);
+  rect(sx - shoulder / 2, sy - 3, shoulder, 10, p.gi);
+  rect(sx - shoulder / 2, sy + 7, shoulder, 2, p.giHi);
   // lapels crossing to the belt
   line(sx - 3, sy + 2, hx + 2, hy + 12, 5, p.giHi);
   line(sx + 6, sy + 1, hx + 6, hy + 10, 4, p.giLo);
   // belt with a knot and two tails
-  rect(hx - 13, hy - 5, 26, 8, p.band);
-  rect(hx - 13, hy - 5, 26, 2, p.bandLo);
+  rect(hx - waist / 2 - 1, hy - 5, waist + 2, 8, p.band);
+  rect(hx - waist / 2 - 1, hy - 5, waist + 2, 2, p.bandLo);
   rect(hx - 4, hy - 6, 9, 9, p.band);
   rect(hx - 4, hy - 6, 9, 2, p.bandLo);
   line(hx - 9, hy - 5, hx - 16, hy - 20, 4, p.band);
@@ -105,11 +130,13 @@ function torso(hx, hy, sx, sy, p) {
 }
 
 export function paintBody(f, frame) {
-  const p = PALETTES[f.palette];
+  const p = f.character.palettes[f.slot];
+  const build = f.character.build;
   const pose = poseOf(f, frame);
   sctx.clearRect(0, 0, SPR_W, SPR_H);
 
   if (pose.kind === 'down') {
+    const w = build.waist;
     // sprawled on their back, head trailing behind
     limb(6, 12, 26, 8, 16, 11, p.giLo, p.gi, p.giLo);
     limb(26, 8, 40, 14, 11, 8, p.giLo, p.gi, p.giLo);
@@ -117,8 +144,8 @@ export function paintBody(f, frame) {
     limb(6, 16, 30, 18, 16, 11, p.gi, p.giHi, p.giLo);
     limb(30, 18, 44, 10, 11, 8, p.gi, p.giHi, p.giLo);
     foot(44, 8, p, false);
-    rect(-12, 8, 26, 20, p.gi);
-    rect(-12, 26, 26, 4, p.giHi);
+    rect(-12, 8, w + 2, 20, p.gi);
+    rect(-12, 26, w + 2, 4, p.giHi);
     rect(2, 8, 9, 20, p.band);
     limb(-8, 22, -2, 34, 11, 9, p.gi, p.giHi, p.giLo);
     fist(-2, 34, p, false);
@@ -141,25 +168,25 @@ export function paintBody(f, frame) {
   const [[fex, fey], [fhx, fhy]] = pose.fa;
 
   // --- back limbs, shaded down so they sit behind the body ---
-  limb(hx - 2, hy, bkx, bky, 16, 11, p.giLo, p.gi, p.giLo);
-  limb(bkx, bky, bfx, bfy + 7, 11, 9, p.giLo, p.gi, p.giLo);
+  limb(hx - 2, hy, bkx, bky, build.leg - 1, build.leg - 6, p.giLo, p.gi, p.giLo);
+  limb(bkx, bky, bfx, bfy + 7, build.leg - 6, build.leg - 8, p.giLo, p.gi, p.giLo);
   foot(bfx, bfy, p, false);
 
-  limb(sx - 2, sy - 2, bex, bey, 12, 10, p.giLo, p.gi, p.giLo);
-  limb(bex, bey, bhx, bhy, 9, 8, p.skinLo, p.skin, p.skinLo);
+  limb(sx - 2, sy - 2, bex, bey, build.arm - 1, build.arm - 3, p.giLo, p.gi, p.giLo);
+  limb(bex, bey, bhx, bhy, build.arm - 4, build.arm - 5, p.skinLo, p.skin, p.skinLo);
   fist(bhx, bhy, p, false);
 
-  torso(hx, hy, sx, sy, p);
+  torso(hx, hy, sx, sy, p, build);
 
   // --- front leg ---
-  limb(hx + 2, hy, fkx, fky, 17, 12, p.gi, p.giHi, p.giLo);
-  limb(fkx, fky, ffx, ffy + 7, 12, 9, p.gi, p.giHi, p.giLo);
+  limb(hx + 2, hy, fkx, fky, build.leg, build.leg - 5, p.gi, p.giHi, p.giLo);
+  limb(fkx, fky, ffx, ffy + 7, build.leg - 5, build.leg - 8, p.gi, p.giHi, p.giLo);
   // trouser hem flaring at the ankle
   rect(ffx - 6, ffy + 12, 15, 5, p.giLo);
   foot(ffx, ffy, p, pose.strike === 'front');
 
   // --- front arm ---
-  limb(sx + 2, sy, fex, fey, 13, 11, p.gi, p.giHi, p.giLo);
+  limb(sx + 2, sy, fex, fey, build.arm, build.arm - 2, p.gi, p.giHi, p.giLo);
   rect(fex - 5, fey + 5, 10, 4, p.giHi);          // sleeve cuff
   limb(fex, fey, fhx, fhy, 10, 9, p.skin, p.skinHi, p.skinLo);
   fist(fhx, fhy, p, pose.fist === 'front');
@@ -172,7 +199,7 @@ export function paintBody(f, frame) {
     fist(bhx, bhy, p, false);
   }
 
-  head(hdx, hdy, p, pose);
+  head(hdx, hdy, p, pose, build, frame);
 
   applyOutline(sctx, SPR_W, SPR_H, OUTLINE);
   return scratch;

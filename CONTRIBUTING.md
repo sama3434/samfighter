@@ -31,6 +31,8 @@ can work at once without editing the same file.
 | Module | Owns | Safe to change alone? |
 |---|---|---|
 | `src/config.js` | World constants and tuning | No — affects everything |
+| `src/characters.js` | The roster: builds and palettes | Yes — pure data |
+| `src/select.js` | Character select state | Yes |
 | `src/moves.js` | Frame data for every attack | Yes, but rerun combat tests |
 | `src/fighter.js` | Physics, stance, attack state machine | Yes |
 | `src/combat.js` | Hit resolution, blocking, pushing apart | Yes |
@@ -41,13 +43,14 @@ can work at once without editing the same file.
 | `src/render/poses.js` | The fighter skeleton per state | Yes |
 | `src/render/sprite.js` | How a fighter is drawn | Yes |
 | `src/render/hud.js` | Bars, timer, banner | Yes |
+| `src/render/select.js` | Character select screen art | Yes |
 | `src/render/scene.js` | Frame composition | Rarely |
 | `src/stages/<name>.js` | One stage's art | Yes — fully independent |
 | `src/stages/index.js` | Stage registry and caching | Only when adding a stage |
 | `src/main.js` | Wiring and the game loop | Rarely |
 
-**Low-conflict work**, ideal to run in parallel: a new stage, a new move, sprite detail,
-HUD layout, sound.
+**Low-conflict work**, ideal to run in parallel: a new stage, a new character, a new
+move, sprite detail, HUD layout, sound.
 
 **Coordinate first**: `config.js`, `scene.js`, `main.js`, and anything that changes a
 module's exported shape.
@@ -61,6 +64,17 @@ module's exported shape.
 
 Nothing else needs to know it exists. `drift` picks the overlay particles
 (`snow`, `petals`, `birds`, `none`).
+
+## Adding a character
+
+1. Add an entry to `src/characters.js`: an `id`, `name`, `blurb`, a `build` (limb
+   widths and hair style), and a palette for each player slot.
+2. If the look needs something the sprite cannot draw yet — a new hair style, a cape —
+   add a branch in `src/render/sprite.js` keyed off `build`.
+
+The select screen sizes itself from the roster length, so nothing else changes. The
+roster test checks every palette tone and build field is present, which catches a
+half-finished entry before it reaches the canvas.
 
 ## Adding a move
 

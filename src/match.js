@@ -150,7 +150,7 @@ export class Match {
             this.timer = 0;
             const champ = p1.wins > p2.wins ? p1 : p2;
             this.banner = champ.name + ' WINS THE MATCH';
-            this.sub = 'PRESS ENTER FOR A REMATCH';
+            this.sub = 'PRESS ENTER TO PICK AGAIN';
           } else {
             this.round++;
             this.startRound();
@@ -164,7 +164,9 @@ export class Match {
         break;
     }
 
-    if (input.pressed.has('enter')) this.startMatch();
+    // Enter restarts mid-match; at matchEnd the app sends you back to the
+    // roster instead, so it is handled a level up.
+    if (input.pressed.has('enter') && this.phase !== 'matchEnd') this.startMatch();
     input.pressed.clear();
   }
 }
