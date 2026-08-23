@@ -40,7 +40,9 @@ canvas {
   display: block;
   width: 100%;
   height: auto;
-  image-rendering: auto;
+  /* keep the pixel grid crisp when the canvas is scaled to fit */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
   background: #10131f;
 }
 

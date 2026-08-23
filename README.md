@@ -1,7 +1,9 @@
 # SAM FIGHTER
 
-A local 1v1 browser fighting game. Two players, one keyboard, no build step and no
-dependencies — plain HTML, CSS and canvas.
+A local 1v1 pixel-art fighting game for the browser. Two players, one keyboard, no
+build step and no dependencies — plain HTML, CSS and canvas.
+
+Four stages rotate as the match goes on: **temple**, **pyramids**, **city**, **mountain**.
 
 ## Play
 
@@ -37,11 +39,22 @@ then open <http://localhost:8123>.
 |---|---|
 | `index.html` | Canvas and the on-page control legend |
 | `style.css` | Page chrome around the canvas |
-| `game.js` | Everything else: move data, simulation, rendering, sound |
+| `pixel.js` | Pixel buffer, drawing primitives, dithering, 5x7 bitmap font |
+| `backgrounds.js` | The four stages and their animated overlays |
+| `game.js` | Move data, simulation, fighter sprites, HUD, sound |
 
 ## How it works
 
-The simulation runs at a fixed 60Hz on an accumulator, decoupled from render, so the
+**The pixel pipeline.** Everything is drawn into a 320x180 buffer and then blown up 3x
+to the 960x540 canvas with smoothing off, so the pixel grid is real rather than a filter
+over vector art. Sky gradients are banded with an ordered 4x4 Bayer dither, and each
+fighter is composed in a scratch buffer and given a silhouette keyline before being
+blitted, which is what gives sprites their hard arcade outline.
+
+Stages are painted once into their own cached canvas; only the small animated overlay
+(petals, snow, birds, neon flicker) is redrawn per frame.
+
+**The simulation** runs at a fixed 60Hz on an accumulator, decoupled from render, so the
 game plays identically regardless of display refresh rate.
 
 Moves are frame data (`MOVES` in `game.js`): `startup`, `active`, `recovery`, damage,
@@ -54,8 +67,18 @@ Tuning the feel means editing the `MOVES` table and the physics constants at the
 
 ## Ideas next
 
+- Hand-authored sprite sheets at a higher resolution (see below)
 - A second character with different frame data
 - Special moves on directional inputs (quarter-circle, charge)
 - Combo counter and juggle rules
 - Simple AI so one player can practise alone
 - Gamepad support via the Gamepad API
+
+## On sprite quality
+
+The fighters are drawn procedurally — a posed skeleton rendered as chunky pixel limbs —
+rather than from hand-authored sprite sheets. That keeps every pose consistent and makes
+animation cheap to change, but it caps how much character detail is possible. A figure
+56 pixels tall has no room for facial expression or cloth folds. Getting closer to
+arcade-era sprite work means both a larger buffer and drawn-per-frame art; see the notes
+in the project history for the resolution maths.
