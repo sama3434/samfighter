@@ -120,7 +120,7 @@ function drawFooter(state, roster) {
 
   const hint = state.bothLocked
     ? 'GET READY'
-    : 'LEFT / RIGHT TO MOVE    PUNCH TO CONFIRM    BLOCK TO CANCEL';
+    : 'LEFT / RIGHT TO CHOOSE      UP TO LOCK IN      DOWN TO CANCEL';
   drawText(pctx, hint, PW / 2, PH - 9,
            state.bothLocked ? '#ffd23f' : '#a89fc4', 1, 'center');
 }

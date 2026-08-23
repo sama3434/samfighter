@@ -16,6 +16,7 @@ export class Fighter {
     this.input = input;              // { held: Set, pressed: Set }
     this.hudColour = hudColour;
     this.wins = 0;
+    this.meter = 0;
     this.reset();
   }
 
@@ -37,7 +38,17 @@ export class Fighter {
     this.ko = false;
     this.walkPhase = 0;
     this.airAttackUsed = false;
+    this.stunTimer = 0;      // drives the stunned look; the lockout is hitstun
   }
+
+  /* Meter carries across rounds within a match -- it is reset only by
+     spending it, which is why it is not cleared in reset(). */
+  gainMeter(amount) {
+    if (!amount) return;
+    this.meter = Math.min(C.METER_MAX, this.meter + amount);
+  }
+
+  get meterFull() { return this.meter >= C.METER_MAX; }
 
   /* ---- geometry ---- */
   get height() {
@@ -54,6 +65,15 @@ export class Fighter {
     if (!this.attack) return null;
     const m = this.attack.move;
     if (this.attack.t < m.startup || this.attack.t >= m.startup + m.active) return null;
+    if (m.both) {
+      // reaches the same distance either way, so the box straddles the fighter
+      return {
+        x: this.x - 28 - m.reach,
+        y: this.y + m.top,
+        w: (28 + m.reach) * 2,
+        h: m.h,
+      };
+    }
     const front = this.facing > 0 ? this.x + 28 : this.x - 28 - m.reach;
     return { x: front, y: this.y + m.top, w: m.reach, h: m.h };
   }
@@ -87,9 +107,11 @@ export class Fighter {
 
     if (this.hitstun > 0) {
       this.hitstun--;
+      if (this.stunTimer > 0) this.stunTimer--;
       this.physics();
       return;
     }
+    this.stunTimer = 0;
 
     if (this.attack) {
       const m = this.attack.move;
@@ -105,6 +127,14 @@ export class Fighter {
     this.crouching = this.onGround && this.down('down');
     this.blocking = this.onGround && this.down('block');
     if (this.blockFlash > 0) this.blockFlash--;
+
+    if (this.tapped('special') && this.meterFull && this.onGround) {
+      this.meter -= MOVES.spin.cost;
+      this.startAttack('spin');
+      this.crouching = false;
+      this.physics();
+      return 'special';
+    }
 
     const wantPunch = this.tapped('punch');
     const wantKick = this.tapped('kick');
@@ -177,6 +207,7 @@ export class Fighter {
       if (move.kbY && this.onGround) { this.vy = move.kbY; this.onGround = false; }
       this.attack = null;
       this.crouching = false;
+      if (move.stun) { this.hitstun = move.stun; this.stunTimer = move.stun; }
       if (move.knockdown) { this.downTimer = 48; this.hitstun = 0; }
     }
 

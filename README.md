@@ -3,8 +3,15 @@
 A local 1v1 pixel-art fighting game for the browser. Two players, one keyboard, no
 build step and no dependencies — plain HTML, CSS and canvas.
 
-Pick a fighter, then fight. Four stages rotate as the match goes on: **temple**,
-**pyramids**, **city**, **mountain**.
+Pick a fighter, then fight. Four stages rotate as the match goes on, each built around
+a different shape rather than a shared template:
+
+| Stage | |
+|---|---|
+| **Temple** | An enclosed market street at dusk, shopfronts pressing in from both sides |
+| **Pyramids** | An open dig site under monumental pyramids, low horizon, a seated colossus |
+| **City** | A rooftop at night, the skyline sitting *below* the parapet |
+| **Mountain** | A rope bridge strung over a gorge, sheer cliff on one side, open air on the other |
 
 ## Roster
 
@@ -13,9 +20,14 @@ Pick a fighter, then fight. Four stages rotate as the match goes on: **temple**,
 | **KAI** | Headband, spiky hair, heavier build |
 | **MIRA** | Ponytail, lighter build, quicker silhouette |
 
-They share the same frame data for now — the difference is look, not moves. Mirror
-matches work: the character is palette-swapped so player one is always the cool colours
-and player two the warm ones.
+They share the same frame data for now — the difference is look, not moves, and the two
+builds are kept close enough that neither reads as the smaller fighter. Mirror matches
+work: the character is palette-swapped so player one is always the cool colours and
+player two the warm ones.
+
+Each player drives the select screen from their own movement keys — left and right to
+choose, up to lock in, down to back out. The attack keys confirm too, out of arcade
+habit, but you never have to move your hands.
 
 ## Play
 
@@ -31,14 +43,21 @@ load over `file://`, so it needs a server even though nothing is compiled.
 | | Player 1 | Player 2 |
 |---|---|---|
 | Browse the roster | `A` / `D` | `←` / `→` |
-| Lock in / cancel | `F` / `H` | `,` / `/` |
+| Lock in / cancel | `W` / `S` | `↑` / `↓` |
 | Move | `A` / `D` | `←` / `→` |
 | Jump | `W` | `↑` |
 | Crouch | `S` | `↓` |
 | Punch | `F` | `,` |
 | Kick | `G` | `.` |
 | Block | `H` | `/` |
+| Special | `Q` | `M` |
 
+- **Special** — the bar along the bottom fills as you land hits: four kicks or eight
+  punches. When it is full, one press spends the whole bar on a spinning sweep that
+  reaches **both ways at once** and leaves whoever it touches **stunned for 0.7
+  seconds** — long enough to land something serious. Its reach is the same as a normal
+  kick, so what you are buying is the coverage and the stun, not the range. Chip damage
+  on a guard pays no meter, and a blocked special stuns nobody.
 - **Crouch + kick** — sweep. Slower, knocks down, and travels under a standing guard.
 - **Jump + punch/kick** — air attack. One per jump.
 - Blocking cuts a hit to chip damage, but only while grounded and turned toward the
@@ -67,7 +86,7 @@ src/
   audio.js          synthesized sound
   pixel/            buffer, primitives, dithering, outline, bitmap font
   render/           poses, fighter sprites, HUD, select screen, frame composition
-  stages/           one module per stage, plus the registry
+  stages/           one module per stage, plus shared props and the registry
 tests/              browser test suite
 ```
 
@@ -101,8 +120,21 @@ widths and hair style, so the roster is data rather than a second set of drawing
 and the select screen draws its portraits with the same function the match uses, so the
 art can never drift out of sync with what you actually get.
 
-**Stages** are painted once into a cached canvas; only the animated overlay — petals,
-snow, birds, neon flicker — is redrawn per frame.
+**Stages** are built the way the arcade ones were: a heavy block of shopfront on each
+side, a gap down the middle that recedes toward a landmark, clutter stacked at ground
+level, and signage filling everything above head height. The band the fighters actually
+occupy is kept darker and calmer than the rest so the action still reads against it.
+
+Scenery is drawn with the same construction as the fighters — three tones and a hard
+silhouette keyline — and each depth layer is outlined as a whole before being
+composited, so a row of shutters merges into one building mass while a lantern hanging
+in front of it does not. Background crowds use the same limb construction at about a
+third the height. Signage carries abstract marks rather than real writing in any
+script: they give a painted sign its density and rhythm without pretending to spell
+something.
+
+Each stage is painted once into a cached canvas (about 13ms) and blitted thereafter;
+only the animated overlay — petals, snow, birds, neon flicker — is redrawn per frame.
 
 **The simulation** runs at a fixed 60Hz on an accumulator, decoupled from render, so the
 game plays identically regardless of display refresh rate. Moves are frame data

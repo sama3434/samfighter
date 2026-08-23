@@ -26,6 +26,31 @@ export function poseOf(f, frame) {
 
   if (f.ko || f.downTimer > 0) return { kind: 'down' };
 
+  if (m === MOVES.spin) {
+    // A spin reads as both legs out at once: one leg swept forward, the other
+    // trailing behind, with the torso whipped over the supporting hip.
+    const whirl = Math.sin(f.attack.t * 0.9);
+    return {
+      kind: 'spin', strike: 'both', spinPhase: e,
+      hip: [0, 30 + e * 4], sh: [-4 + whirl * 3, 60 + e * 4], head: [-2 + whirl * 4, 78 + e * 4],
+      bl: [[-16 - 14 * e, 24], [-24 - 30 * e, 16 + 6 * e]],
+      fl: [[16 + 14 * e, 26], [26 + 30 * e, 18 + 6 * e]],
+      ba: [[-14, 48], [-22 - 6 * e, 40]],
+      fa: [[14, 50], [22 + 6 * e, 42]],
+    };
+  }
+
+  if (f.stunTimer > 0) {
+    // stunned: upright but limp, arms hanging, head lolling
+    const loll = Math.sin(frame * 0.18) * 3;
+    return {
+      kind: 'stunned',
+      hip: [0, 46], sh: [-4, 80], head: [-6 + loll, 98],
+      bl: [[-10, 28], [-16, FEET]], fl: [[8, 28], [14, FEET]],
+      ba: [[-10, 62], [-12, 46]], fa: [[10, 62], [12, 46]],
+    };
+  }
+
   if (f.hitstun > 0) {
     return {
       kind: 'hurt',

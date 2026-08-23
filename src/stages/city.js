@@ -1,90 +1,176 @@
 import { PW, PH, PGROUND } from '../pixel/buffer.js';
-import { pxRect, pxLine, pxCircle } from '../pixel/draw.js';
-import { ditherGradient, ditherDisc } from '../pixel/dither.js';
+import { pxRect, pxLine, pxCircle, pxDot, pxTri, pxEllipse } from '../pixel/draw.js';
+import { ditherGradient } from '../pixel/dither.js';
+import { layer, glow, block, signBoard, banner, crate, barrel, bystander } from './props.js';
 import { windowLights, starField, rng } from './scenery.js';
 
-/* Neon rooftops at night. */
+/* A rooftop at night, high above the city.
+
+   Where the market street closes you in, this one opens out: the skyline sits
+   *below* the fighters, behind a parapet, and the only tall things in frame
+   are a water tower and a billboard. The read is height, not enclosure. */
+
+const PAL = {
+  crowd: [
+    { base: '#2f3f6b', hi: '#4d63a0', lo: '#1c2647', belt: '#141a33', shoe: '#12101f', skin: '#e8b487', skinHi: '#ffd6ab', hair: '#1a1626' },
+    { base: '#8c3a5c', hi: '#b85f84', lo: '#5c2139', belt: '#2f1626', shoe: '#12101f', skin: '#f0c090', skinHi: '#ffdcb4', hair: '#2b1f38' },
+    { base: '#3f7a6b', hi: '#5fa892', lo: '#265046', belt: '#17332c', shoe: '#12101f', skin: '#d9a878', skinHi: '#f6cb9c', hair: '#241d33' },
+  ],
+};
+
+const PARAPET_Y = PGROUND - 30;
+
 export function paint(c) {
-  ditherGradient(c, 0, 0, PW, PGROUND, ['#080a1e', '#12163a', '#241a4e', '#3d2352', '#5c2f4e']);
-  starField(c, 200, 135, 4242);
+  ditherGradient(c, 0, 0, PW, PARAPET_Y + 8, ['#070a1e', '#101436', '#20194a', '#3a2150', '#5a2e4c']);
+  starField(c, 190, 120, 4242);
+  pxCircle(c, 96, 44, 14, '#e8eaff');
+  pxCircle(c, 91, 39, 4, '#c9cdf0');
+  pxCircle(c, 101, 50, 3, '#c9cdf0');
+  glow(c, 96, 44, 40, '160, 170, 230', 4, 0.05);
 
-  pxCircle(c, 87, 78, 15, '#e8eaff');
-  pxCircle(c, 81, 72, 4, '#c9cdf0');
-  pxCircle(c, 93, 84, 3, '#c9cdf0');
-  ditherDisc(c, 87, 78, 34, '#8f9adf', 0.3);
-
-  const rand = rng(20240823);
-
-  // far skyline
-  let x = -9;
-  while (x < PW + 9) {
-    const w = 21 + rand() * 30;
-    const h = 45 + rand() * 69;
-    pxRect(c, x, PGROUND - 39 - h, w, h + 39, '#171436');
-    windowLights(c, x, PGROUND - 39 - h, w, h, ['#4a5aa8', '#5f6fc0'], 0.22, rand);
-    x += w + 5;
-  }
-
-  // near skyline
-  x = -15;
-  while (x < PW + 15) {
-    const w = 33 + rand() * 39;
-    const h = 51 + rand() * 81;
-    const top = PGROUND - 21 - h;
-    pxRect(c, x, top, w, h + 21, '#241c44');
-    pxRect(c, x, top, 3, h + 21, '#332a58');
-    pxRect(c, x, top, w, 2, '#3e3468');
-    windowLights(c, x, top, w, h, ['#ffd980', '#ffb45e', '#9fd4ff'], 0.4, rand);
-    if (rand() > 0.5) {
-      pxRect(c, x + 6, top - 9, 11, 9, '#1b1536');       // water tank
-      pxRect(c, x + 4, top - 11, 15, 2, '#2c2350');
-      pxLine(c, x + 8, top, x + 8, top - 9, 1, '#0f0c22');
-    } else {
-      pxLine(c, x + w / 2, top, x + w / 2, top - 14, 1, '#1b1536');   // aerial
-      pxRect(c, x + w / 2 - 2, top - 17, 4, 3, '#ff5a5a');
+  /* ---- far: the city, seen from above and behind the parapet ---- */
+  c.drawImage(layer((f) => {
+    const rand = rng(20240823);
+    // a back rank of towers, tops well above the parapet
+    let x = -12;
+    while (x < PW + 12) {
+      const w = 26 + rand() * 34;
+      const h = 60 + rand() * 96;
+      const top = PARAPET_Y - h;
+      pxRect(f, x, top, w, h, '#171436');
+      pxRect(f, x, top, w, 2, '#26205a');
+      windowLights(f, x, top, w, h, ['#4a5aa8', '#ffd980'], 0.26, rand);
+      if (rand() > 0.6) {
+        pxLine(f, x + w / 2, top, x + w / 2, top - 12, 1, '#141130');
+        pxRect(f, x + w / 2 - 1, top - 14, 3, 3, '#ff5a5a');
+      }
+      x += w + 5;
     }
-    x += w + 6;
-  }
+    // a nearer rank, only their tops showing over the parapet
+    x = -20;
+    while (x < PW + 20) {
+      const w = 34 + rand() * 40;
+      const h = 14 + rand() * 22;
+      const top = PARAPET_Y - h;
+      pxRect(f, x, top, w, h + 12, '#241c44');
+      pxRect(f, x, top, w, 2, '#3e3468');
+      windowLights(f, x, top, w, h, ['#ffd980', '#9fd4ff'], 0.4, rand);
+      pxRect(f, x + 6, top - 7, 12, 7, '#1b1536');       // roof tanks below
+      x += w + 6;
+    }
+  }), 0, 0);
 
-  // neon signage
-  pxRect(c, 39, PGROUND - 87, 33, 23, '#0e0b22');
-  pxRect(c, 42, PGROUND - 84, 27, 17, '#ff3f8e');
-  pxRect(c, 45, PGROUND - 81, 21, 11, '#ffa8d0');
-  ditherDisc(c, 55, PGROUND - 75, 26, '#ff3f8e', 0.28);
+  /* ---- mid: the parapet, water tower and billboard ---- */
+  c.drawImage(layer((m) => {
+    // parapet wall running the width of the roof
+    block(m, -4, PARAPET_Y, PW + 8, 22, '#3a3156', '#524879', '#241d3b');
+    pxRect(m, -4, PARAPET_Y, PW + 8, 3, '#6b5f96');
+    for (let i = 0; i < PW; i += 34) pxRect(m, i, PARAPET_Y + 3, 3, 19, '#2b2448');
 
-  pxRect(c, 321, PGROUND - 99, 21, 39, '#0e0b22');
-  for (let i = 0; i < 4; i++) pxRect(c, 324, PGROUND - 96 + i * 9, 15, 6, '#38f0d0');
+    // water tower, left
+    const tx = 66, ty = PARAPET_Y - 78;
+    for (const lx of [tx - 22, tx - 8, tx + 6, tx + 20]) {
+      pxLine(m, lx, PARAPET_Y + 2, tx + (lx - tx) * 0.55, ty + 34, 3, '#2f2748');
+    }
+    pxLine(m, tx - 24, ty + 52, tx + 22, ty + 44, 2, '#2f2748');
+    block(m, tx - 26, ty, 52, 36, '#4a3a2e', '#6b5644', '#2e231b');
+    for (let i = 0; i < 36; i += 6) pxRect(m, tx - 26, ty + i, 52, 2, '#3a2c22');
+    pxRect(m, tx - 28, ty + 12, 56, 3, '#5b5b66');
+    pxTri(m, tx - 30, ty, tx + 30, ty, tx, ty - 16, '#5a4636');
+    pxTri(m, tx, ty, tx + 30, ty, tx, ty - 16, '#3c2e23');
 
-  pxRect(c, 402, PGROUND - 75, 45, 15, '#0e0b22');
-  pxRect(c, 405, PGROUND - 72, 39, 9, '#ffd166');
-  ditherDisc(c, 424, PGROUND - 67, 28, '#ffd166', 0.22);
+    // billboard, right — abstract marks, lit from below
+    const bx = 356, by = PARAPET_Y - 92;
+    pxRect(m, bx + 14, by + 54, 6, 40, '#241d3b');
+    pxRect(m, bx + 74, by + 54, 6, 40, '#241d3b');
+    pxLine(m, bx + 16, by + 60, bx + 78, by + 84, 2, '#241d3b');
+    block(m, bx, by, 96, 56, '#141130', '#2a2450', '#0c0a20');
+    pxRect(m, bx + 4, by + 4, 88, 48, '#e8563c');
+    signBoard(m, bx + 10, by + 10, 76, 36, '#ffd166', '#8a2c1f', '#3b1f18', 3);
+    for (const lx of [bx + 16, bx + 46, bx + 76]) {
+      pxRect(m, lx, by + 56, 5, 4, '#3a3450');
+      glow(m, lx + 2, by + 50, 22, '255, 220, 140', 3, 0.07);
+    }
+  }), 0, 0);
 
-  // street
-  ditherGradient(c, 0, PGROUND, PW, PH - PGROUND, ['#2a2540', '#1a1730', '#12101f']);
-  pxRect(c, 0, PGROUND, PW, 2, '#4a4270');
-  pxRect(c, 0, PGROUND + 2, PW, 1, '#2f2a4c');
-  for (let i = 0; i < 7; i++) pxRect(c, 18 + i * 72, PGROUND + 18, 33, 3, '#544b7a');
+  /* ---- the roof deck itself ---- */
+  c.drawImage(layer((g) => {
+    pxRect(g, 0, PGROUND - 8, PW, PH - PGROUND + 8, '#2b2740');
+    pxRect(g, 0, PGROUND - 8, PW, 3, '#413c5e');
+    // tar seams running toward the viewer
+    for (let i = -8; i <= 8; i++) {
+      pxLine(g, PW / 2 + i * 32, PGROUND - 5, PW / 2 + i * 96, PH, 1, '#211d33');
+    }
+    for (let j = 1; j < 5; j++) pxRect(g, 0, PGROUND - 5 + j * j * 3, PW, 1, '#211d33');
+    const rand = rng(77);
+    for (let i = 0; i < 220; i++) {
+      const x = Math.floor(rand() * PW);
+      const y = PGROUND - 6 + Math.floor(rand() * (PH - PGROUND + 6));
+      pxDot(g, x, y, rand() > 0.5 ? '#3a3552' : '#1d1a2c');   // gravel
+    }
+  }), 0, 0);
 
-  for (const lx of [84, 240, 396]) {
-    ditherDisc(c, lx, PGROUND + 14, 26, '#3d3a52', 0.5);
-    ditherDisc(c, lx, PGROUND + 8, 14, '#574e5e', 0.5);
-    pxRect(c, lx - 2, PGROUND - 51, 3, 51, '#141126');
-    pxRect(c, lx - 6, PGROUND - 56, 12, 5, '#141126');
-    pxRect(c, lx - 5, PGROUND - 55, 10, 3, '#ffe9a8');
-  }
+  /* ---- crowd: watching from the fire escape and the far corner ---- */
+  c.drawImage(layer((p) => {
+    bystander(p, 150, PARAPET_Y + 2, 40, PAL.crowd[0], 'crossed', 1);
+    bystander(p, 300, PARAPET_Y + 2, 41, PAL.crowd[1], 'point', -1);
+    bystander(p, 246, PARAPET_Y - 1, 34, PAL.crowd[2], 'stand', -1);
+    bystander(p, 30, PGROUND + 4, 48, PAL.crowd[1], 'cheer', 1);
+    bystander(p, 452, PGROUND + 4, 48, PAL.crowd[2], 'crossed', -1);
+  }), 0, 0);
+
+  /* ---- near: rooftop clutter ---- */
+  c.drawImage(layer((n) => {
+    // air handling units
+    for (const [ax, aw] of [[118, 44], [258, 38]]) {
+      block(n, ax, PARAPET_Y - 22, aw, 24, '#4b4b57', '#6b6b7a', '#2e2e38');
+      pxRect(n, ax + 3, PARAPET_Y - 19, aw - 6, 18, '#35353f');
+      for (let i = 0; i < aw - 8; i += 5) pxRect(n, ax + 4 + i, PARAPET_Y - 18, 2, 16, '#5b5b66');
+      pxCircle(n, ax + aw / 2, PARAPET_Y - 10, 6, '#2a2a33');
+      pxCircle(n, ax + aw / 2, PARAPET_Y - 10, 4, '#7a7a8c');
+    }
+    // vent pipes and a satellite dish
+    for (const [vx, vh] of [[196, 26], [214, 18], [330, 22]]) {
+      pxRect(n, vx, PARAPET_Y - vh, 8, vh + 2, '#3f4450');
+      pxRect(n, vx, PARAPET_Y - vh, 3, vh + 2, '#5b616e');
+      pxEllipse(n, vx + 4, PARAPET_Y - vh, 6, 3, '#5b616e');
+    }
+    pxLine(n, 424, PARAPET_Y + 2, 424, PARAPET_Y - 20, 3, '#3f4450');
+    pxEllipse(n, 430, PARAPET_Y - 26, 13, 10, '#8f95a6');
+    pxEllipse(n, 431, PARAPET_Y - 26, 9, 7, '#5f6472');
+
+    // cables strung overhead
+    pxLine(n, 0, 22, PW, 40, 1, '#141126');
+    pxLine(n, 0, 32, PW, 18, 1, '#141126');
+
+    // string of work lights over the deck
+    pxLine(n, 10, 66, 470, 78, 1, '#241d3b');
+    for (let i = 0; i < 9; i++) {
+      const lx = 26 + i * 54;
+      const ly = 68 + Math.round(i * 1.2);
+      pxLine(n, lx, ly, lx, ly + 5, 1, '#241d3b');
+      glow(n, lx, ly + 8, 16, '255, 226, 160', 3, 0.07);
+      pxCircle(n, lx, ly + 8, 3, '#ffe9a8');
+    }
+
+    banner(n, 462, PARAPET_Y - 66, 16, 54, '#5c2a5c', '#ffd166', '#fff0b0');
+    barrel(n, 86, PGROUND - 4, 18, 26, '#3f5a4a', '#5c8069', '#26382e', '#2a2028');
+    crate(n, 388, PGROUND - 2, 22, 18, '#4a3f6b', '#665aa0', '#2c2547');
+    crate(n, 386, PGROUND - 20, 18, 16, '#4a3f6b', '#665aa0', '#2c2547');
+    // a puddle catching the billboard
+    pxEllipse(n, 214, PGROUND + 18, 22, 4, '#3a3a6b');
+    pxRect(n, 204, PGROUND + 17, 18, 1, '#8f6ab0');
+  }), 0, 0);
 }
 
-/* The pink sign stutters and the teal bars chase. */
+/* The billboard flickers and the aerial beacons blink. */
 export function overlay(c, frame) {
-  if ((frame >> 4) % 5 !== 0) {
-    pxRect(c, 42, PGROUND - 84, 27, 17, '#ff3f8e');
-    pxRect(c, 45, PGROUND - 81, 21, 11, '#ffa8d0');
+  const bx = 356, by = PARAPET_Y - 92;
+  if ((frame >> 4) % 6 !== 0) {
+    pxRect(c, bx + 4, by + 4, 88, 48, '#e8563c');
+    signBoard(c, bx + 10, by + 10, 76, 36, '#ffd166', '#8a2c1f', '#3b1f18', 3);
   }
-  for (let i = 0; i < 4; i++) {
-    const on = ((frame >> 3) + i) % 4 !== 0;
-    pxRect(c, 324, PGROUND - 96 + i * 9, 15, 6, on ? '#38f0d0' : '#14544c');
-  }
-  pxRect(c, 405, PGROUND - 72, 39, 9, Math.sin(frame * 0.06) > 0 ? '#ffd166' : '#c99a3a');
+  if ((frame >> 5) % 2 === 0) pxRect(c, 240, 14, 3, 3, '#ff5a5a');
 }
 
 export const stage = { key: 'city', name: 'CITY', drift: 'none', paint, overlay };

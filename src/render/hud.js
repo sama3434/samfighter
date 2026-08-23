@@ -1,5 +1,5 @@
-import { MAX_HP, WINS_NEEDED } from '../config.js';
-import { PW, pctx } from '../pixel/buffer.js';
+import { MAX_HP, METER_MAX, WINS_NEEDED } from '../config.js';
+import { PW, PH, pctx } from '../pixel/buffer.js';
 import { pxRect } from '../pixel/draw.js';
 import { drawText, textWidth, GLYPH_H } from '../pixel/font.js';
 
@@ -39,9 +39,43 @@ function healthBar(f, side) {
   }
 }
 
+/* Special meter, along the bottom corners where fighting games have always
+   put it -- out of the way of the action, and readable at a glance because it
+   only has two states that matter: filling, and ready. */
+function meterBar(f, side, frame) {
+  const w = 150, h = 10;
+  const x = side === 'left' ? 10 : PW - 10 - w;
+  const y = PH - 21;
+  const full = f.meter >= METER_MAX;
+
+  pxRect(pctx, x - 2, y - 2, w + 4, h + 4, '#0d0812');
+  pxRect(pctx, x - 1, y - 1, w + 2, h + 2, full ? '#ffd23f' : '#4a4460');
+  pxRect(pctx, x, y, w, h, '#1e1a2e');
+
+  const fillW = Math.round(w * clamp01(f.meter / METER_MAX));
+  const fx = side === 'left' ? x : x + w - fillW;
+  if (fillW > 0) {
+    const flash = full && (frame >> 2) % 2 === 0;
+    pxRect(pctx, fx, y, fillW, h, flash ? '#ffffff' : '#3fd8e8');
+    pxRect(pctx, fx, y, fillW, 2, flash ? '#ffffff' : '#a8f0ff');
+    pxRect(pctx, fx, y + h - 2, fillW, 2, flash ? '#ffd23f' : '#1f7f96');
+  }
+
+  // quarter ticks: one kick per segment, so the fill is countable
+  for (let i = 1; i < 4; i++) {
+    pxRect(pctx, x + Math.round((w * i) / 4), y, 1, h, '#0d0812');
+  }
+
+  const label = full ? `SPECIAL READY  ${side === 'left' ? 'Q' : 'M'}` : 'SPECIAL';
+  drawText(pctx, label, side === 'left' ? x : x + w, y - 10,
+           full ? '#ffd23f' : '#6b6489', 1, side === 'left' ? 'left' : 'right', '#0d0812');
+}
+
 export function drawHud(match) {
   healthBar(match.p1, 'left');
   healthBar(match.p2, 'right');
+  meterBar(match.p1, 'left', match.frame);
+  meterBar(match.p2, 'right', match.frame);
 
   const secs = Math.ceil(match.clock / 60);
   pxRect(pctx, PW / 2 - 24, 10, 48, 30, '#0d0812');

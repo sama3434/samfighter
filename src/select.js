@@ -60,12 +60,18 @@ export class SelectScreen {
     this.frame++;
     for (let i = 0; i < 2; i++) if (this.nudge[i] > 0) this.nudge[i]--;
 
+    /* Each player drives the screen entirely from their own movement cluster:
+       left/right to browse, up to lock in, down to back out. The attack keys
+       are accepted as well, since that is the arcade habit, but nobody has to
+       leave the keys they already have their hands on. */
     for (let player = 0; player < 2; player++) {
-      const keys = this.schemes[player];
-      if (input.pressed.has(keys.left)) this.move(player, -1);
-      if (input.pressed.has(keys.right)) this.move(player, 1);
-      if (input.pressed.has(keys.punch) || input.pressed.has(keys.kick)) this.lock(player);
-      if (input.pressed.has(keys.block)) this.unlock(player);
+      const k = this.schemes[player];
+      if (input.pressed.has(k.left)) this.move(player, -1);
+      if (input.pressed.has(k.right)) this.move(player, 1);
+      if (input.pressed.has(k.up) || input.pressed.has(k.punch) || input.pressed.has(k.kick)) {
+        this.lock(player);
+      }
+      if (input.pressed.has(k.down) || input.pressed.has(k.block)) this.unlock(player);
     }
 
     if (this.bothLocked) {

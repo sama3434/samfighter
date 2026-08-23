@@ -37,8 +37,10 @@ export const CHARACTERS = [
     name: 'MIRA',
     blurb: 'FAST HANDS',
     build: {
-      shoulder: 26, chest: 26, waist: 19,
-      arm: 11, leg: 15,
+      // close enough to KAI that neither reads as the smaller fighter;
+      // the difference is silhouette, not scale
+      shoulder: 28, chest: 28, waist: 22,
+      arm: 12, leg: 16,
       hair: 'ponytail',
       headband: false,
     },

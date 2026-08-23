@@ -201,6 +201,16 @@ export function paintBody(f, frame) {
 
   head(hdx, hdy, p, pose, build, frame);
 
+  if (pose.kind === 'spin' && pose.spinPhase > 0.6) {
+    // motion arc under the sweep, drawn both ways
+    for (const dir of [1, -1]) {
+      for (let i = 0; i < 3; i++) {
+        const r = 30 + i * 9;
+        rect(dir * (r - 4), 14 + i * 3, 8, 2, i === 0 ? p.giHi : p.gi);
+      }
+    }
+  }
+
   applyOutline(sctx, SPR_W, SPR_H, OUTLINE);
   return scratch;
 }
@@ -226,6 +236,20 @@ export function drawFighter(f, frame) {
     pctx.drawImage(scratch, fx - SPR_AX, fy - SPR_AY);
   }
   pctx.restore();
+
+  // stunned: a ring of stars over the head, the way the arcade always did it
+  if (f.stunTimer > 0) {
+    const cx = fx, cy = fy - 118;
+    for (let i = 0; i < 3; i++) {
+      const a = frame * 0.16 + (i * Math.PI * 2) / 3;
+      const sx2 = Math.round(cx + Math.cos(a) * 14);
+      const sy2 = Math.round(cy + Math.sin(a) * 4);
+      const col = i === 0 ? '#fff6c0' : '#ffd23f';
+      pxRect(pctx, sx2 - 2, sy2, 5, 1, col);
+      pxRect(pctx, sx2, sy2 - 2, 1, 5, col);
+      pxRect(pctx, sx2 - 1, sy2 - 1, 3, 3, col);
+    }
+  }
 
   // guard spark: a couple of bright chips off the forearms
   if (f.blockFlash > 0 && f.blockFlash % 2 === 0) {

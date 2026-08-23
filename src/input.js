@@ -5,9 +5,9 @@
    test can build a bare {held, pressed} pair and drive a fighter with it. */
 
 export const SCHEMES = [
-  { left: 'a', right: 'd', up: 'w', down: 's', punch: 'f', kick: 'g', block: 'h' },
+  { left: 'a', right: 'd', up: 'w', down: 's', punch: 'f', kick: 'g', block: 'h', special: 'q' },
   { left: 'arrowleft', right: 'arrowright', up: 'arrowup', down: 'arrowdown',
-    punch: ',', kick: '.', block: '/' },
+    punch: ',', kick: '.', block: '/', special: 'm' },
 ];
 
 export function createInput() {

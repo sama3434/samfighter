@@ -1,90 +1,171 @@
-import { PW, PGROUND } from '../pixel/buffer.js';
-import { pxRect, pxLine, pxCircle, pxDot } from '../pixel/draw.js';
+import { PW, PH, PGROUND } from '../pixel/buffer.js';
+import { pxRect, pxLine, pxCircle, pxDot, pxTri } from '../pixel/draw.js';
 import { ditherGradient, ditherDisc } from '../pixel/dither.js';
-import { pagodaRoof, ridge, tiledFloor, rng } from './scenery.js';
+import { layer, glow, block, facade, awning, lantern, signBoard, banner,
+         crate, barrel, basket, sack, hangingRow, bystander, paving, alleyDepth } from './props.js';
+import { pagodaRoof, rng } from './scenery.js';
 
-/* Dusk over a mountain shrine. */
+/* A market street at dusk, the shrine at the end of it.
+
+   Built the way the arcade stages were: a heavy block of shopfront on each
+   side, a gap down the middle that recedes toward a landmark, clutter stacked
+   at ground level, and signage filling everything above head height. The band
+   the fighters actually occupy is kept darker and calmer than the rest so the
+   action still reads. */
+
+const PAL = {
+  wall: '#6b4a3c', wallHi: '#8a6450', wallLo: '#412a22',
+  trim: '#a83a34', trimHi: '#c85a4e',
+  far: '#5a4268', farLo: '#3d2c4f',
+  crowd: [
+    { base: '#4a5a8c', hi: '#6d7db0', lo: '#2e3a63', belt: '#26304f', shoe: '#231d33', skin: '#e8b487', skinHi: '#ffd6ab', hair: '#241d33' },
+    { base: '#7a4a6b', hi: '#a06d90', lo: '#4f2c46', belt: '#38203a', shoe: '#231d33', skin: '#f0c090', skinHi: '#ffdcb4', hair: '#3b2a1e' },
+    { base: '#3f7a5e', hi: '#5fa07e', lo: '#26503c', belt: '#1e3b2e', shoe: '#231d33', skin: '#d9a878', skinHi: '#f6cb9c', hair: '#1f1a2b' },
+  ],
+};
+
+const LEFT_W = 152;
+const RIGHT_X = 330;
+const GAP_X = LEFT_W, GAP_W = RIGHT_X - LEFT_W;
+
 export function paint(c) {
   ditherGradient(c, 0, 0, PW, PGROUND, ['#1b1038', '#3a1b4e', '#782f55', '#c05a46', '#e8956a']);
 
-  ditherDisc(c, 372, 84, 34, '#ffd9b0', 0.6);
-  pxCircle(c, 372, 84, 20, '#ffeccc');
-  pxCircle(c, 366, 78, 5, '#f0d8b4');
-  pxCircle(c, 378, 91, 3, '#f0d8b4');
-  pxCircle(c, 377, 74, 2, '#f0d8b4');
+  ditherDisc(c, 240, 74, 30, '#ffd9b0', 0.55);
+  pxCircle(c, 240, 74, 15, '#ffeccc');
+  pxCircle(c, 236, 70, 4, '#f0d8b4');
 
-  ridge(c, PGROUND - 66, 39, 0.021, 2, 66, '#3a2050');
-  ridge(c, PGROUND - 39, 21, 0.03, 1.5, 39, '#2a1740');
+  /* ---- far: the street receding to the shrine ---- */
+  c.drawImage(layer((f) => {
+    alleyDepth(f, GAP_X, GAP_W, 96, PAL);
 
-  // pagoda
-  const cx = 240, base = PGROUND - 9;
-  pxRect(c, cx - 45, base - 51, 90, 51, '#5c2233');
-  pxRect(c, cx - 45, base - 51, 5, 51, '#7a3245');
-  pxRect(c, cx + 40, base - 51, 5, 51, '#411824');
-  for (const wx of [-33, 21]) {
-    pxRect(c, cx + wx, base - 45, 12, 18, '#2b1220');
-    pxRect(c, cx + wx + 1, base - 44, 10, 16, '#f0b45c');
-    pxLine(c, cx + wx + 6, base - 44, cx + wx + 6, base - 28, 1, '#8a5a26');
+    // shrine at the end of the street
+    const cx = 240, base = PGROUND - 6;
+    pxRect(f, cx - 30, base - 40, 60, 40, '#6b3040');
+    pxRect(f, cx - 30, base - 40, 4, 40, '#8a4055');
+    for (const wx of [-22, 8]) {
+      pxRect(f, cx + wx, base - 34, 14, 16, '#2b1220');
+      pxRect(f, cx + wx + 1, base - 33, 12, 14, '#f0b45c');
+    }
+    pxRect(f, cx - 7, base - 24, 14, 24, '#2b1220');
+    pxRect(f, cx - 5, base - 22, 10, 22, '#f2c070');
+    pagodaRoof(f, cx, base - 40, 40, 10, '#b34450', '#7d2b38', '#8f333f');
+    pxRect(f, cx - 20, base - 66, 40, 18, '#5e2739');
+    pxRect(f, cx - 5, base - 62, 10, 10, '#f0b45c');
+    pagodaRoof(f, cx, base - 66, 30, 9, '#b34450', '#7d2b38', '#8f333f');
+    pxRect(f, cx - 1, base - 82, 3, 10, '#e0a850');
+
+    // torii straddling the street, small with distance
+    pxRect(f, 186, PGROUND - 46, 4, 46, '#8e2c28');
+    pxRect(f, 292, PGROUND - 46, 4, 46, '#8e2c28');
+    pxRect(f, 180, PGROUND - 52, 118, 4, '#a83a34');
+    pxRect(f, 178, PGROUND - 57, 122, 3, '#6f211f');
+  }), 0, 0);
+
+  paving(c, ['#8a7f6c', '#6e6455', '#b0a48c'], '#453e33', 26);
+
+  /* ---- vendors, drawn before the counters so the counters hide their legs ---- */
+  c.drawImage(layer((p) => {
+    bystander(p, 60, PGROUND - 2, 50, PAL.crowd[2], 'stand', 1);
+    bystander(p, 396, PGROUND - 2, 50, PAL.crowd[1], 'lean', -1);
+  }), 0, 0);
+
+  /* ---- mid: the two shopfronts framing the street ---- */
+  c.drawImage(layer((m) => {
+    // LEFT — a food stall, open to the street
+    facade(m, -4, -10, LEFT_W + 4, PGROUND - 74, PAL, { storey: 36, glow: '#f2c070' });
+    block(m, -4, PGROUND - 76, LEFT_W + 4, 20, '#3b2a26', '#543b33', '#241813');
+    pxRect(m, 0, PGROUND - 58, LEFT_W - 4, 58, '#241a20');          // shop interior
+    pxRect(m, 0, PGROUND - 58, LEFT_W - 4, 3, '#120c14');
+    glow(m, 74, PGROUND - 34, 62, '224, 150, 70');            // warm interior light
+    block(m, 8, PGROUND - 26, 124, 26, '#7a5230', '#9c6c42', '#4e3220');  // counter
+    pxRect(m, 8, PGROUND - 26, 124, 3, '#b98a52');
+    // stove and steam pans
+    block(m, 96, PGROUND - 44, 34, 18, '#4b4b57', '#6b6b7a', '#2e2e38');
+    for (const sx of [102, 116]) {
+      pxCircle(m, sx, PGROUND - 45, 5, '#2a2a33');
+      pxCircle(m, sx, PGROUND - 46, 4, '#8e8ea0');
+    }
+
+    // RIGHT — a produce shop under a deep awning
+    facade(m, RIGHT_X, -14, PW - RIGHT_X + 4, PGROUND - 70, PAL, { storey: 34, shutters: true });
+    block(m, RIGHT_X - 4, PGROUND - 72, PW - RIGHT_X + 8, 18, '#3b2a26', '#543b33', '#241813');
+    pxRect(m, RIGHT_X + 2, PGROUND - 54, PW - RIGHT_X, 54, '#241a20');
+    glow(m, 410, PGROUND - 32, 58, '224, 150, 70');
+    block(m, RIGHT_X + 6, PGROUND - 22, 130, 22, '#7a5230', '#9c6c42', '#4e3220');
+    pxRect(m, RIGHT_X + 6, PGROUND - 22, 130, 3, '#b98a52');
+  }), 0, 0);
+
+  /* ---- crowd: the street has people in it ---- */
+  c.drawImage(layer((p) => {
+    // far, small, in the depth of the street
+    bystander(p, 206, PGROUND - 12, 30, PAL.crowd[0], 'stand', 1);
+    bystander(p, 224, PGROUND - 10, 32, PAL.crowd[2], 'lean', -1);
+    bystander(p, 268, PGROUND - 11, 31, PAL.crowd[1], 'stand', -1);
+    // mid depth, flanking the fight
+    bystander(p, 166, PGROUND - 2, 44, PAL.crowd[1], 'crossed', 1);
+    bystander(p, 314, PGROUND - 2, 45, PAL.crowd[0], 'point', -1);
+    bystander(p, 440, PGROUND - 2, 48, PAL.crowd[0], 'cheer', -1);
+  }), 0, 0);
+
+  /* ---- near: everything hanging, stacked and leaning ---- */
+  c.drawImage(layer((n) => {
+    // cured meat over the left counter
+    hangingRow(n, 18, PGROUND - 58, 6, 15, 20, '#8c3226', '#c4503a', '#3b2a26');
+
+    // awnings
+    awning(n, -4, PGROUND - 78, LEFT_W + 8, 16, '#c8443a', '#f0e0c8', '#8e2c28');
+    awning(n, RIGHT_X - 6, PGROUND - 74, PW - RIGHT_X + 12, 16, '#2f7a5e', '#f0e0c8', '#1d4f3c');
+
+    // string of lanterns across the whole street
+    pxLine(n, 0, 30, PW, 44, 1, '#2b2118');
+    for (let i = 0; i < 8; i++) {
+      const lx = 22 + i * 62;
+      lantern(n, lx, 44 + Math.round(i * 1.6), 9, '#d8382c', '#8e1f18', '#e8c060');
+    }
+
+    // signage above the shopfronts
+    banner(n, 22, 66, 20, 74, '#c8443a', '#e8c060', '#f6efdc');
+    banner(n, 118, 74, 18, 62, '#2f5f9c', '#e8c060', '#f6efdc');
+    signBoard(n, 158, 92, 46, 20, '#e8c060', '#8e2c28', '#3b1f18', 3);
+    signBoard(n, 276, 84, 52, 22, '#2f7a5e', '#e8c060', '#f6efdc', 3);
+    banner(n, 356, 60, 20, 80, '#c8443a', '#e8c060', '#f6efdc');
+    banner(n, 446, 70, 18, 66, '#5c3f8c', '#e8c060', '#f6efdc');
+    signBoard(n, 384, 100, 50, 20, '#e8c060', '#8e2c28', '#3b1f18', 3);
+
+    // ground clutter, left
+    crate(n, 6, PGROUND - 16, 22, 16, '#8a6032', '#ab7c45', '#573a1e');
+    crate(n, 6, PGROUND - 30, 18, 14, '#8a6032', '#ab7c45', '#573a1e');
+    basket(n, 32, PGROUND - 14, 22, 14, '#c8a05c', '#8a6a34', '#d84a3a', '#ff8a6a');
+    barrel(n, 122, PGROUND - 22, 16, 22, '#7a5230', '#9c6c42', '#4e3220', '#5b5b66');
+
+    // ground clutter, right
+    basket(n, RIGHT_X + 12, PGROUND - 15, 26, 15, '#c8a05c', '#8a6a34', '#4f8a3c', '#7fc45c');
+    basket(n, RIGHT_X + 44, PGROUND - 13, 24, 13, '#c8a05c', '#8a6a34', '#e8a83c', '#ffd06a');
+    sack(n, 456, PGROUND - 20, 20, 20, '#b89a6a', '#d6b98a', '#7d6444', '#8c3226');
+    crate(n, 412, PGROUND - 15, 20, 15, '#8a6032', '#ab7c45', '#573a1e');
+
+    // a bicycle leaning in the gap, because arcade streets always had one
+    pxCircle(n, 152, PGROUND - 9, 8, '#2a2028');
+    pxCircle(n, 152, PGROUND - 9, 5, '#544a52');
+    pxCircle(n, 176, PGROUND - 9, 8, '#2a2028');
+    pxCircle(n, 176, PGROUND - 9, 5, '#544a52');
+    pxLine(n, 152, PGROUND - 9, 166, PGROUND - 24, 2, '#3f6f8c');
+    pxLine(n, 166, PGROUND - 24, 176, PGROUND - 9, 2, '#3f6f8c');
+    pxLine(n, 166, PGROUND - 24, 172, PGROUND - 26, 2, '#2a2028');
+  }), 0, 0);
+
+  // scattered litter so the paving is not a blank slab
+  const rand = rng(4242);
+  for (let i = 0; i < 60; i++) {
+    const x = Math.floor(rand() * PW);
+    const y = PGROUND + 3 + Math.floor(rand() * (PH - PGROUND - 4));
+    pxDot(c, x, y, rand() > 0.5 ? '#9c9078' : '#57503f');
   }
-  pxRect(c, cx - 9, base - 33, 18, 33, '#2b1220');
-  pxRect(c, cx - 7, base - 30, 14, 30, '#f2c070');
-  pxRect(c, cx - 2, base - 30, 3, 30, '#8a5a26');
-  pagodaRoof(c, cx, base - 51, 60, 13, '#8c2f38', '#5e1d28', '#6b2029');
-
-  pxRect(c, cx - 36, base - 90, 72, 26, '#4d1d2c');
-  for (const wx of [-21, 9]) {
-    pxRect(c, cx + wx, base - 84, 11, 14, '#2b1220');
-    pxRect(c, cx + wx + 1, base - 83, 9, 12, '#f0b45c');
-  }
-  pagodaRoof(c, cx, base - 90, 48, 12, '#8c2f38', '#5e1d28', '#6b2029');
-
-  pxRect(c, cx - 24, base - 120, 48, 20, '#4d1d2c');
-  pxRect(c, cx - 6, base - 116, 12, 12, '#f0b45c');
-  pagodaRoof(c, cx, base - 120, 36, 10, '#8c2f38', '#5e1d28', '#6b2029');
-  pxRect(c, cx - 2, base - 141, 4, 13, '#e0a850');
-  pxCircle(c, cx, base - 144, 3, '#ffd98a');
-
-  // steps up to the doorway
-  for (let i = 0; i < 3; i++) {
-    pxRect(c, cx - 24 - i * 5, base + i * 3, 48 + i * 10, 3, i % 2 ? '#4a3228' : '#5d4238');
-  }
-
-  // torii gate
-  pxRect(c, 66, PGROUND - 60, 7, 60, '#a83a34');
-  pxRect(c, 111, PGROUND - 60, 7, 60, '#a83a34');
-  pxRect(c, 66, PGROUND - 60, 2, 60, '#c85a4e');
-  pxRect(c, 54, PGROUND - 66, 76, 6, '#c04a3e');
-  pxRect(c, 51, PGROUND - 73, 82, 5, '#8e2c28');
-  pxRect(c, 60, PGROUND - 51, 64, 4, '#c04a3e');
-
-  // cherry tree
-  pxLine(c, 432, PGROUND, 426, PGROUND - 39, 6, '#3d2436');
-  pxLine(c, 426, PGROUND - 30, 411, PGROUND - 45, 4, '#3d2436');
-  pxLine(c, 426, PGROUND - 33, 444, PGROUND - 48, 4, '#3d2436');
-  for (const [bx, by, r] of [[411, -51, 14], [432, -60, 17], [450, -48, 12], [423, -42, 11], [444, -33, 9]]) {
-    pxCircle(c, bx, PGROUND + by, r, '#d9628c');
-    pxCircle(c, bx - 3, PGROUND + by - 3, Math.max(3, r - 6), '#f090b0');
-  }
-
-  // hanging lanterns
-  for (const lx of [165, 198, 282, 315]) {
-    pxLine(c, lx, PGROUND - 78, lx, PGROUND - 69, 1, '#2b1220');
-    ditherDisc(c, lx, PGROUND - 62, 14, '#ff9a5c', 0.35);
-    pxRect(c, lx - 5, PGROUND - 69, 11, 14, '#e8623c');
-    pxRect(c, lx - 3, PGROUND - 66, 7, 8, '#ffd06a');
-    pxRect(c, lx - 5, PGROUND - 69, 11, 2, '#7a2418');
-  }
-
-  tiledFloor(c, ['#5d4238', '#3a2622', '#8a6450'], '#2a1a18', 20);
-  pxRect(c, 0, PGROUND - 9, PW, 9, '#463028');
-  pxRect(c, 0, PGROUND - 9, PW, 2, '#6b4c3c');
-  const rand = rng(88);
-  for (let i = 0; i < 40; i++) {
-    pxRect(c, Math.floor(rand() * PW), PGROUND - 8 + Math.floor(rand() * 6), 2, 1, '#3a2820');
-  }
+  void pxTri;
 }
 
-/* Petals drifting across on the evening breeze. */
+/* Petals drifting through on the evening air. */
 export function overlay(c, frame, drifters) {
   for (const d of drifters) {
     d.y += d.s * 0.5;

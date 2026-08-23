@@ -122,8 +122,10 @@ export class Match {
         break;
 
       case 'fight': {
-        if (p1.update(p2, true)) this.sound.whiff();
-        if (p2.update(p1, true)) this.sound.whiff();
+        const a1 = p1.update(p2, true);
+        const a2 = p2.update(p1, true);
+        if (a1) this.sound[a1 === 'special' ? 'bell' : 'whiff']();
+        if (a2) this.sound[a2 === 'special' ? 'bell' : 'whiff']();
         separate(p1, p2);
         resolveHits(p1, p2, (h) => this.onHit(h));
         resolveHits(p2, p1, (h) => this.onHit(h));

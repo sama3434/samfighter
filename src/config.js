@@ -15,6 +15,8 @@ export const FRICTION = 0.72;
 export const BACKWALK = 0.72;       // walking away is slower than advancing
 
 export const MAX_HP = 100;
+export const METER_MAX = 100;       // filled by 4 kicks or 8 punches
+export const STUN_FRAMES = 42;      // 0.7s at 60Hz
 export const ROUND_TIME = 60;       // seconds
 export const WINS_NEEDED = 2;
 

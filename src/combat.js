@@ -15,7 +15,9 @@ export function resolveHits(attacker, defender, fx) {
 
   attacker.attack.hasHit = true;
   const m = attacker.attack.move;
-  const dir = attacker.facing;
+  // a two-sided move pushes the defender away from the attacker rather than
+  // in whatever direction the attacker happens to be facing
+  const dir = m.both ? (defender.x >= attacker.x ? 1 : -1) : attacker.facing;
 
   // You block by holding guard while turned toward the attacker. A sweep
   // travels under a standing guard, so only a crouching block stops it.
@@ -24,6 +26,8 @@ export function resolveHits(attacker, defender, fx) {
   const blocked = defender.blocking && facingAttacker && guardCovers && defender.downTimer === 0;
 
   defender.takeHit(m, dir, blocked);
+  // meter is awarded for landing a hit clean; chip on a guard does not pay
+  if (!blocked) attacker.gainMeter(m.meterGain);
 
   const hit = {
     move: m,

@@ -45,6 +45,7 @@ can work at once without editing the same file.
 | `src/render/hud.js` | Bars, timer, banner | Yes |
 | `src/render/select.js` | Character select screen art | Yes |
 | `src/render/scene.js` | Frame composition | Rarely |
+| `src/stages/props.js` | Shared scenery: buildings, awnings, signs, crowds | Yes |
 | `src/stages/<name>.js` | One stage's art | Yes — fully independent |
 | `src/stages/index.js` | Stage registry and caching | Only when adding a stage |
 | `src/main.js` | Wiring and the game loop | Rarely |
@@ -64,6 +65,30 @@ module's exported shape.
 
 Nothing else needs to know it exists. `drift` picks the overlay particles
 (`snow`, `petals`, `birds`, `none`).
+
+Stages are built in depth layers, each wrapped in `layer()` from `props.js` so its
+silhouette gets a keyline before it is composited:
+
+1. sky gradient (no keyline — it is the backdrop)
+2. **far** — whatever the street recedes toward
+3. ground, via `paving()`
+4. **vendors** — anyone who should be occluded by a counter goes down *before* the
+   counters exist
+5. **mid** — the two side buildings and their shopfronts
+6. **crowd** — bystanders at street level
+7. **near** — awnings, signage, lanterns, hanging goods, ground clutter
+
+Three things to keep in mind:
+
+- Leave the band the fighters occupy (roughly y 120–235) darker and less busy than the
+  rest, or the action stops reading.
+- Use `glow()` rather than `ditherDisc()` for lamp and interior light — a jittered
+  dither reads as scattered glitter over a dark interior.
+- **Give the stage its own shape.** The layer list above is a construction order, not a
+  composition. The four existing stages deliberately differ in silhouette: enclosed
+  street, open plain, elevated rooftop, asymmetric span. Reusing the same
+  building-left / gap / building-right arrangement is what makes stages blur together
+  even when the palettes differ.
 
 ## Adding a character
 
