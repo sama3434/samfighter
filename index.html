@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAM FIGHTER</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="frame">
+    <canvas id="game" width="960" height="540"></canvas>
+  </div>
+
+  <div id="controls">
+    <div class="card p1">
+      <h3>Player 1</h3>
+      <p><b>W A S D</b> — jump / left / crouch / right</p>
+      <p><b>F</b> punch &nbsp; <b>G</b> kick &nbsp; <b>H</b> block</p>
+    </div>
+    <div class="card hint">
+      <p><b>Crouch + kick</b> = sweep (knockdown)</p>
+      <p><b>Jump + punch/kick</b> = air attack</p>
+      <p>First to 2 rounds wins &nbsp;•&nbsp; <b>Enter</b> restarts</p>
+    </div>
+    <div class="card p2">
+      <h3>Player 2</h3>
+      <p><b>↑ ← ↓ →</b> — jump / left / crouch / right</p>
+      <p><b>,</b> punch &nbsp; <b>.</b> kick &nbsp; <b>/</b> block</p>
+    </div>
+  </div>
+
+<script src="game.js"></script>
+</body>
+</html>
