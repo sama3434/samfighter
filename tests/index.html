@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SAM FIGHTER — tests</title>
+<style>
+  body { background: #0b0d14; color: #d9deec; font: 13px/1.6 ui-monospace, Menlo, monospace;
+         margin: 0; padding: 24px; }
+  h1 { font-size: 15px; letter-spacing: .16em; text-transform: uppercase; }
+  h2 { font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+       color: #7f889f; margin: 20px 0 6px; border-bottom: 1px solid #2a3145; padding-bottom: 4px; }
+  .ok { color: #58c98a; }
+  .fail { color: #ff6b5e; margin: 4px 0; }
+  .fail span { color: #b0879f; padding-left: 46px; display: block; }
+  .summary { padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-bottom: 8px; }
+  .summary.good { background: #12301f; color: #7fe0a8; border: 1px solid #2c6b45; }
+  .summary.bad { background: #331414; color: #ff9d92; border: 1px solid #7a2a2a; }
+</style>
+</head>
+<body>
+  <h1>Sam Fighter — test run</h1>
+  <div id="out">running…</div>
+
+<script type="module">
+  import { run } from './harness.js';
+  import './fighter.test.js';
+  import './combat.test.js';
+  import './match.test.js';
+  import './render.test.js';
+  run(document.getElementById('out'));
+</script>
+</body>
+</html>
