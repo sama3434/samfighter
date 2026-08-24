@@ -32,6 +32,11 @@ export function mulberry32(seed) {
    defender's half-width. Derived from the live move table so a frame-data
    change cannot silently strand the computer out of range. */
 const reachOf = (m) => 28 + m.reach + C.BODY_W / 2;
+/* Spacing is written in body widths rather than pixels. The world has been
+   rescaled twice on this project; anything expressed as a raw pixel distance
+   silently stops meaning what it meant. BW is one fighter wide. */
+const BW = C.BODY_W;
+
 export const RANGE = {
   punch: reachOf(MOVES.punch),
   kick: reachOf(MOVES.kick),
@@ -67,27 +72,27 @@ export const PROFILES = {
        block: 0.10, lowBlock: 0.10, antiAir: 0.00, punish: 0.06,
        attack: 0.015, airAttack: 0.06, special: 0.000, guardRead: 0.00,
        flail: 0.012, sweepW: 0.12, approach: 0.42, retreatW: 0.30,
-       jump: 0.05, guardStance: 0.00, stopAt: 200, cool: 55, coolJit: 40 },
+       jump: 0.05, guardStance: 0.00, stopAt: 1.79 * BW, cool: 55, coolJit: 40 },
   2: { react: 18, reactJit: 14, think: 24, thinkJit: 14,
        block: 0.35, lowBlock: 0.25, antiAir: 0.25, punish: 0.30,
        attack: 0.050, airAttack: 0.25, special: 0.005, guardRead: 0.15,
        flail: 0.005, sweepW: 0.18, approach: 0.68, retreatW: 0.22,
-       jump: 0.08, guardStance: 0.12, stopAt: 215, cool: 26, coolJit: 16 },
+       jump: 0.08, guardStance: 0.12, stopAt: 1.92 * BW, cool: 26, coolJit: 16 },
   3: { react: 12, reactJit: 10, think: 16, thinkJit: 9,
        block: 0.60, lowBlock: 0.50, antiAir: 0.50, punish: 0.55,
        attack: 0.070, airAttack: 0.40, special: 0.020, guardRead: 0.35,
        flail: 0.000, sweepW: 0.24, approach: 0.85, retreatW: 0.14,
-       jump: 0.10, guardStance: 0.24, stopAt: 225, cool: 18, coolJit: 10 },
+       jump: 0.10, guardStance: 0.24, stopAt: 2.01 * BW, cool: 18, coolJit: 10 },
   4: { react: 8, reactJit: 7, think: 11, thinkJit: 6,
        block: 0.80, lowBlock: 0.72, antiAir: 0.72, punish: 0.80,
        attack: 0.100, airAttack: 0.50, special: 0.055, guardRead: 0.60,
        flail: 0.000, sweepW: 0.28, approach: 0.94, retreatW: 0.09,
-       jump: 0.10, guardStance: 0.34, stopAt: 230, cool: 12, coolJit: 8 },
+       jump: 0.10, guardStance: 0.34, stopAt: 2.05 * BW, cool: 12, coolJit: 8 },
   5: { react: 5, reactJit: 5, think: 7, thinkJit: 5,
        block: 0.93, lowBlock: 0.90, antiAir: 0.90, punish: 0.95,
        attack: 0.130, airAttack: 0.60, special: 0.120, guardRead: 0.80,
        flail: 0.000, sweepW: 0.30, approach: 1.00, retreatW: 0.05,
-       jump: 0.12, guardStance: 0.42, stopAt: 232, cool: 7, coolJit: 6 },
+       jump: 0.12, guardStance: 0.42, stopAt: 2.07 * BW, cool: 7, coolJit: 6 },
 };
 
 /* Frames of quiet (nobody taking damage) before the computer stops being
@@ -195,7 +200,7 @@ export class AIController {
 
     /* ---- airborne: drift in, swing once on the way down ---- */
     if (!me.onGround) {
-      if (dist > 90) this.hold(toward);
+      if (dist > 0.80 * BW) this.hold(toward);
       if (!me.airAttackUsed && dist < RANGE.kick && me.vy > -8 && this.roll(P.airAttack)) {
         this.press(this.roll(0.6) ? 'kick' : 'punch');
         this.cooldown = Math.round(P.cool + this.rng() * P.coolJit);
@@ -246,7 +251,7 @@ export class AIController {
     /* ---- do not hammer a knocked-down body; take position instead ---- */
     if (foe.downTimer > 6) {
       if (dist > RANGE.kick - 40) this.hold(toward);
-      else if (dist < 170) this.hold(away);
+      else if (dist < 1.52 * BW) this.hold(away);
       return;
     }
 
@@ -282,7 +287,7 @@ export class AIController {
     const r = this.rng();
     if (dist > RANGE.kick) {
       if (r < P.approach) return 'approach';
-      if (r < P.approach + P.jump && dist > 300 && dist < 560) return 'jumpin';
+      if (r < P.approach + P.jump && dist > 2.68 * BW && dist < 5.0 * BW) return 'jumpin';
       if (r < P.approach + P.jump + 0.25) return 'idle';
       return 'retreat';
     }
@@ -301,8 +306,8 @@ export class AIController {
 
   movePlan(me, dist, toward, away, P) {
     // walking into a corner is how fights are lost; bail forwards instead
-    const lo = C.WALL + C.BODY_W / 2 + 40;
-    const hi = C.W - C.WALL - C.BODY_W / 2 - 40;
+    const lo = C.WALL + C.BODY_W / 2 + 0.36 * BW;
+    const hi = C.W - C.WALL - C.BODY_W / 2 - 0.36 * BW;
     const cornered = (me.x < lo && away === 'left') || (me.x > hi && away === 'right');
 
     switch (this.plan) {
