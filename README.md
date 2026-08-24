@@ -125,7 +125,8 @@ tests/              browser test suite
 ```
 
 `CONTRIBUTING.md` has the module ownership map and a git-worktree workflow for
-working on several parts at once.
+working on several parts at once. `MODERN_REBUILD.md` is a briefing for rebuilding this
+as a 3D game — what carries over, what does not, and what it would cost.
 
 ## Tests
 
