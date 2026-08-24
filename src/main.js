@@ -5,6 +5,8 @@ import { SelectScreen } from './select.js';
 import { CHARACTERS } from './characters.js';
 import { SCHEMES, input, attachInput } from './input.js';
 import { Sound } from './audio.js';
+import { Music } from './music.js';
+import { installMusicUI } from './music/ui.js';
 import { STAGES, warmStages, seedDrifters } from './stages/index.js';
 import { renderFrame } from './render/scene.js';
 import { renderSelect } from './render/select.js';
@@ -43,6 +45,11 @@ function startMatch([first, second]) {
 }
 
 function tick() {
+  /* The music watches the match rather than the match driving the music: a
+     handful of comparisons per tick, nothing allocated, and match.js stays
+     unaware that any of this exists. */
+  Music.sync(screen, match);
+
   if (screen === 'select') {
     const picks = select.update(input);
     if (picks) startMatch(picks);
@@ -64,7 +71,15 @@ function draw() {
   else renderFrame(ctx, match);
 }
 
-attachInput(window, () => Sound.unlock());
+/* Browsers hold audio until a gesture. The effects already unlock on the
+   first keypress, so the music joins them there rather than inventing a
+   second gate. */
+attachInput(window, () => {
+  Sound.unlock();
+  Music.attach(Sound.ctx);
+});
+Sound.onCue = (name) => Music.cue(name);
+installMusicUI(Music);
 warmStages();
 
 /* Fixed-timestep loop: the simulation always advances in 1/60s steps no
@@ -90,5 +105,5 @@ requestAnimationFrame(frame);
 window.SAMFIGHTER = {
   get match() { return match; },
   get screen() { return screen; },
-  select, input, C, CHARACTERS, startMatch,
+  select, input, C, CHARACTERS, startMatch, Music, Sound,
 };
