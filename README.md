@@ -1,9 +1,10 @@
 # SAM FIGHTER
 
-A local 1v1 pixel-art fighting game for the browser. Two players, one keyboard, no
-build step and no dependencies — plain HTML, CSS and canvas.
+A local 1v1 pixel-art fighting game for the browser. Two players on one keyboard, or
+one player against the computer — no build step and no dependencies, plain HTML, CSS
+and canvas.
 
-Pick a fighter, then fight. Five stages rotate as the match goes on, each built around
+Pick a mode, pick a fighter, then fight. Five stages rotate as the match goes on, each built around
 a different shape rather than a shared template:
 
 | Stage | |
@@ -29,6 +30,26 @@ player two the warm ones.
 Each player drives the select screen from their own movement keys — left and right to
 choose, up to lock in, down to back out. The attack keys confirm too, out of arcade
 habit, but you never have to move your hands.
+
+## Fighting the computer
+
+The first screen offers **VS PLAYER** or **VS COMPUTER**. Choosing the computer opens
+a row of five difficulty levels — NOVICE up to CHAMPION, level 5 the hardest. Either
+player's movement keys (WASD or the arrows) drive both menus, since a lone player
+might have either hand on the keyboard. In the fight you use **Player 1's controls**;
+on the character select you pick your fighter and the computer then visibly picks its
+own. `Esc` on the select screen returns to the mode screen.
+
+Difficulty is behaviour, never cheating: every level plays the same fighter with the
+same health, damage and meter. What rises with the level is how fast the computer
+notices what you are doing — reaction time, how reliably it blocks (and whether it
+crouches under a sweep), whether it anti-airs a jump-in, whether it punishes a whiffed
+move during recovery, its spacing discipline, and whether it spends its meter. Level 1
+barely blocks and swings half-heartedly; level 5 walks you down, turtles your strings
+and takes its openings. The opponent lives in `src/ai.js`, is driven by a seeded
+generator, and writes into the same input structure a human's keys do — so whole
+matches replay deterministically in the test suite, which asserts the win rate
+actually rises level by level.
 
 ## Play
 
@@ -84,7 +105,9 @@ serve.sh            local server
 src/
   config.js         world constants and tuning
   characters.js     the roster: builds and palettes
+  mode.js           mode screen state: vs player, or vs computer at a level
   select.js         character select state
+  ai.js             the computer opponent, one profile per difficulty level
   moves.js          frame data for every attack
   fighter.js        physics, stance, attack state machine
   combat.js         hit resolution, blocking, pushing apart
@@ -198,5 +221,4 @@ The simulation modules never touch a canvas, which is what makes them testable.
 - A second character with different frame data
 - Special moves on directional inputs (quarter-circle, charge)
 - Combo counter and juggle rules
-- Simple AI so one player can practise alone
 - Gamepad support via the Gamepad API
