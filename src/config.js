@@ -37,12 +37,12 @@ export const BACKWALK = 0.72;       // walking away is slower than advancing
 export const MAX_HP = 100;
 
 export const DAMAGE = {
-  punch: 7,
-  kick: 13,
+  punch: 6,
+  kick: 12,
   sweep: 10,
-  airPunch: 8,
-  airKick: 14,
-  spin: 12,
+  airPunch: 5,
+  airKick: 12,
+  spin: 10,
 };
 
 /* What gets through a block. Chip is the thing stopping a turtling opponent
@@ -59,7 +59,7 @@ export const CHIP_DAMAGE = {
 /* At or above this, a hit counts as heavy and gets longer hitstop, a bigger
    shake and hotter sparks. It is compared against DAMAGE, so if you scale
    those numbers this has to move with them. */
-export const HEAVY_HIT_DAMAGE = 12;
+export const HEAVY_HIT_DAMAGE = 9;
 
 /* ---------------- rounds and meter ---------------- */
 
