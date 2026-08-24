@@ -271,7 +271,7 @@ export function paint(c) {
   /* ---- the cliff, and the ledge the near end of the bridge stands on ---- */
   c.drawImage(layer((m) => {
     cliff(m);
-    toro(m, 36, PGROUND + 14);
+    toro(m, 12, PGROUND + 22);
     // meltwater falling away under the bridge's near end
     for (let y = PGROUND + 11; y < PH; y++) {
       const w = 7 + (y - PGROUND) * 0.2;
@@ -299,12 +299,14 @@ export function paint(c) {
 
   /* ---- the bridge the fight happens on ---- */
   c.drawImage(layer((b) => {
-    const span0 = 130, span1 = 452;
+    const span0 = 46, span1 = 452;   // near anchor sits left of the
+                                     // left wall (x 48), so the whole
+                                     // walkable span is bridge
     const T = (x) => (x - span0) / (span1 - span0);
     const sag = (x, amp) => Math.round(Math.sin(T(x) * Math.PI) * amp);
 
     // anchor posts: paired uprights, lashed, man-high and then some
-    for (const [px, baseY] of [[112, PGROUND + 8], [130, PGROUND + 6],
+    for (const [px, baseY] of [[28, PGROUND + 8], [46, PGROUND + 6],
                                [448, PGROUND + 6], [464, PGROUND + 8]]) {
       const h = Math.round(1.7 * METRE);
       block(b, px - 6, baseY - h, 12, h, PAL.wood, PAL.woodHi, PAL.woodLo);
@@ -316,7 +318,7 @@ export function paint(c) {
         pxRect(b, px - 7, ly, 14, 1, PAL.ropeHi);
       }
     }
-    pxRect(b, 106, PGROUND - 76, 30, 4, PAL.woodLo);             // crossbars
+    pxRect(b, 22, PGROUND - 76, 30, 4, PAL.woodLo);              // crossbars
     pxRect(b, 442, PGROUND - 78, 30, 4, PAL.woodLo);
 
     // hand ropes at hand height, sagging over the span

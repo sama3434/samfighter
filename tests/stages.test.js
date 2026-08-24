@@ -7,6 +7,7 @@ import { DEPTH as templeDepth, PEOPLE as templePeople } from '../src/stages/temp
 import { DEPTH as pyramidsDepth, PEOPLE as pyramidsPeople } from '../src/stages/pyramids.js';
 import { DEPTH as cityDepth, PEOPLE as cityPeople } from '../src/stages/city.js';
 import { DEPTH as mountainDepth, PEOPLE as mountainPeople } from '../src/stages/mountain.js';
+import { DEPTH as pirateDepth, PEOPLE as piratePeople } from '../src/stages/pirate.js';
 
 const scratch = () => {
   const cv = document.createElement('canvas');
@@ -155,6 +156,7 @@ describe('stage crowds obey the depth system', () => {
     ['pyramids', pyramidsDepth, pyramidsPeople],
     ['city', cityDepth, cityPeople],
     ['mountain', mountainDepth, mountainPeople],
+    ['pirate', pirateDepth, piratePeople],
   ];
 
   it('every crowd figure is sized by where its feet meet the ground', () => {

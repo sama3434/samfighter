@@ -1,7 +1,7 @@
 import { PW, PH, PGROUND } from '../pixel/buffer.js';
 import { pxRect, pxLine, pxCircle, pxDot, pxTri, pxEllipse, pxTaper } from '../pixel/draw.js';
 import { ditherGradient } from '../pixel/dither.js';
-import { layer, glow, block, crate, barrel, crowd } from './props.js';
+import { layer, glow, block, crate, barrel, crowd, makeDepth, person, METRE } from './props.js';
 import { rng } from './scenery.js';
 
 /* The weather deck of a ship at sea, under a squall.
@@ -23,6 +23,14 @@ const HORIZON = 130;      // eye level: the sea meets the sky just under the HUD
 const RAIL = 178;         // top of the bulwark running the width of the ship
 const QDECK = 203;        // the raised quarterdeck aft, on the right
 const MAST_X = 132;
+
+/* Same depth rule as the other stages: everything is placed by where its feet
+   meet the deck, and sizes come from metres rather than from what looks about
+   right. METRE is 64px on the fighters' plane, so a cask is 58px and a naval
+   gun is most of a metre and a half long. */
+export const DEPTH = makeDepth(HORIZON);
+const D = DEPTH;
+const m = (metres, feetY = PGROUND) => D.size(feetY, metres);
 
 const SKY = ['#232a33', '#333e47', '#4a5a5c', '#71827c', '#a5b09b', '#d2cfb2'];
 const W = {                                        // weathered oak
@@ -94,6 +102,22 @@ function furledSail(c, x0, x1, y, depth) {
   }
 }
 
+/* The watch, sized off the deck each one stands on. The quarterdeck is a
+   plane further back, so those three come out around 78px; the gunner is on
+   the fighters' own plane and is therefore their full height, which is why he
+   is tucked against the port bow where he cannot crowd the fight. */
+export const PEOPLE = [
+  person(D, 430, QDECK, { face: -1, pose: 'hips' }),          // at the wheel
+  person(D, 392, QDECK, { face: -1, pose: 'point' }),
+  person(D, 466, QDECK, { face: -1, pose: 'crossed' }),
+  person(D, 372, QDECK, { face: -1, pose: 'sit', garb: 'vest' }),
+  person(D, 22, PGROUND, { face: 1, pose: 'crossed' }),       // gunner, port bow
+];
+
+export function paintCrew(c) {
+  c.drawImage(crowd(PEOPLE, CROWD, { seed: 1799, haze: 'rgba(52, 70, 76, 0.18)' }), 0, 0);
+}
+
 /** The ship's wheel, seen square on. */
 function wheel(c, cx, cy, r) {
   for (let i = 0; i < 10; i++) {
@@ -113,19 +137,32 @@ function wheel(c, cx, cy, r) {
 }
 
 /** Deck gun on its truck carriage, lashed down. */
+/* A truck-carriage gun. Sized off the metre rather than eyeballed: the barrel
+   is 1.5m, the trucks are 0.4m, and the whole piece stands about chest high on
+   a fighter -- which is why it takes up as much deck as it does. */
 function cannon(c, x, baseY) {
-  pxRect(c, x + 6, baseY - 24, 44, 9, IRON);        // barrel
-  pxRect(c, x + 6, baseY - 24, 44, 3, '#5f676f');
-  pxRect(c, x + 4, baseY - 25, 5, 11, '#5f676f');   // muzzle swell
-  pxRect(c, x + 48, baseY - 26, 8, 13, IRON);       // breech
-  pxCircle(c, x + 57, baseY - 20, 3, IRON);         // cascabel
-  pxTri(c, x + 10, baseY - 15, x + 56, baseY - 15, x + 52, baseY - 4, W.base);
-  pxRect(c, x + 10, baseY - 15, 46, 3, W.hi);
-  pxCircle(c, x + 17, baseY - 4, 4, W.lo);          // trucks
-  pxCircle(c, x + 17, baseY - 4, 2, W.deep);
-  pxCircle(c, x + 45, baseY - 4, 4, W.lo);
-  pxCircle(c, x + 45, baseY - 4, 2, W.deep);
-  pxLine(c, x + 2, baseY - 20, x + 56, baseY - 12, 1, ROPE);   // breeching rope
+  const L = Math.round(1.5 * METRE);                 // barrel length, 96px
+  const bore = Math.round(0.26 * METRE);             // 17px
+  const truck = Math.round(0.2 * METRE);             // wheel radius, 13px
+  const bY = baseY - truck * 2 - Math.round(0.34 * METRE);
+
+  pxRect(c, x + 12, bY, L, bore, IRON);              // barrel
+  pxRect(c, x + 12, bY, L, 4, '#5f676f');
+  pxRect(c, x + 7, bY - 2, 10, bore + 4, '#5f676f'); // muzzle swell
+  pxRect(c, x + 12 + L, bY - 3, 15, bore + 7, IRON); // breech
+  pxCircle(c, x + 30 + L, bY + bore / 2, 6, IRON);   // cascabel
+  pxRect(c, x + 40, bY + bore, 12, 6, IRON);         // trunnion
+
+  const cY = bY + bore + 4;                          // carriage
+  pxTri(c, x + 20, cY, x + 24 + L, cY, x + 14 + L, baseY - truck, W.base);
+  pxRect(c, x + 20, cY, L + 4, 5, W.hi);
+  pxRect(c, x + 20, cY + 10, L, 3, W.lo);            // cheek bolt line
+  for (const tx of [x + 34, x + L - 4]) {            // trucks
+    pxCircle(c, tx, baseY - truck, truck, W.lo);
+    pxCircle(c, tx, baseY - truck, truck - 4, W.deep);
+    pxCircle(c, tx, baseY - truck, 2, IRON);
+  }
+  pxLine(c, x + 2, bY + 4, x + 28 + L, bY + 12, 1, ROPE);      // breeching rope
 }
 
 /** A coil of rope flaked down on the deck. */
@@ -302,17 +339,8 @@ export function paint(c) {
 
   planking(c);
 
-  /* ---- crowd: the watch, up on the quarterdeck and along the rail ---- */
-  c.drawImage(crowd([
-    { x: 430, y: QDECK, h: 44, face: -1, pose: 'hips' },       // at the wheel
-    { x: 392, y: QDECK, h: 42, face: -1, pose: 'point' },
-    { x: 466, y: QDECK, h: 43, face: -1, pose: 'crossed' },
-    { x: 98, y: 116, h: 28, face: 1, pose: 'behind', head: 'wrap', cloth: '#c8443a' },  // lookout aloft
-    { x: 96, y: PGROUND, h: 47, face: 1, pose: 'crossed' },
-    { x: 300, y: PGROUND, h: 45, face: -1, pose: 'cheer' },
-    { x: 336, y: PGROUND - 1, h: 44, face: -1, pose: 'sit', garb: 'vest' },
-  ], CROWD, { seed: 1799, haze: 'rgba(52, 70, 76, 0.18)' }), 0, 0);
-
+  /* ---- crowd: the watch, up on the quarterdeck and at the gun ---- */
+  paintCrew(c);
   /* ---- near: mast, rigging and everything lashed to the deck ---- */
   c.drawImage(layer((n) => {
     // headsail closing off the top right corner, drawing full. Cloth is cut
@@ -415,7 +443,7 @@ export function paint(c) {
     pxRect(n, 366, QDECK - 13, PW - 366, 2, W.lo);
 
     // the wheel, aft, with the helmsman behind it
-    wheel(n, 430, QDECK - 21, 18);
+    wheel(n, 430, QDECK - m(0.62, QDECK), Math.round(m(1.2, QDECK) / 2));
     block(n, 424, QDECK - 4, 13, 6, W.base, W.hi, W.lo);
     pxRect(n, 402, QDECK - 16, 9, 16, W.base);        // binnacle
     pxRect(n, 401, QDECK - 20, 11, 5, W.lo);
@@ -431,21 +459,28 @@ export function paint(c) {
     pxRect(n, 459, QDECK - 58, 15, 3, IRON);
 
     // gun on the port side of the waist
-    cannon(n, 20, PGROUND + 2);
-    // stores, lashed down against the roll
-    barrel(n, 224, PGROUND - 24, 18, 26, '#6b4a2c', '#8f6640', '#3f2b19', IRON);
-    barrel(n, 246, PGROUND - 20, 16, 22, '#6b4a2c', '#8f6640', '#3f2b19', IRON);
-    barrel(n, 236, PGROUND - 44, 17, 22, '#6b4a2c', '#8f6640', '#3f2b19', IRON);
-    pxLine(n, 220, PGROUND - 34, 266, PGROUND - 30, 1, ROPE);
-    pxLine(n, 222, PGROUND - 16, 264, PGROUND - 12, 1, ROPE);
-    crate(n, 380, PGROUND - 2, 26, 20, '#6b4f34', '#8f6b48', '#3d2a1a');
-    crate(n, 408, PGROUND + 4, 22, 16, '#6b4f34', '#8f6b48', '#3d2a1a');
-    pxLine(n, 376, PGROUND - 12, 434, PGROUND - 6, 1, ROPE);
+    cannon(n, 6, PGROUND + 4);
 
-    barrel(n, 328, PGROUND - 14, 20, 16, '#6b4a2c', '#8f6640', '#3f2b19', IRON);
+    /* Stores at their real sizes: a cask is 0.9m, a crate about 0.7m. At the
+       correct scale far fewer fit, so they are grouped at the edges of the
+       waist instead of scattered through the middle of the fight. */
+    const CASK_W = m(0.62), CASK_H = m(0.9);
+    const CX = 246;
+    barrel(n, CX, PGROUND - CASK_H, CASK_W, CASK_H, '#6b4a2c', '#8f6640', '#3f2b19', IRON);
+    barrel(n, CX + CASK_W + 4, PGROUND - m(0.78), m(0.55), m(0.78),
+           '#6b4a2c', '#8f6640', '#3f2b19', IRON);
+    pxLine(n, CX - 4, PGROUND - CASK_H + 12, CX + CASK_W * 2 + 8, PGROUND - CASK_H + 16, 1, ROPE);
+    pxLine(n, CX - 4, PGROUND - 14, CX + CASK_W * 2 + 8, PGROUND - 10, 1, ROPE);
+
+    const BOX = m(0.72);
+    crate(n, 380, PGROUND - BOX, BOX + 6, BOX, '#6b4f34', '#8f6b48', '#3d2a1a');
+    crate(n, 380 + BOX + 10, PGROUND - m(0.56), m(0.56) + 4, m(0.56),
+          '#6b4f34', '#8f6b48', '#3d2a1a');
+    pxLine(n, 376, PGROUND - BOX + 10, 456, PGROUND - BOX + 16, 1, ROPE);
+
     grating(n, 176, PGROUND + 10, 62, 22);
-    ropeCoil(n, 300, PGROUND + 16, 13);
-    ropeCoil(n, 462, PGROUND + 14, 10);
+    ropeCoil(n, 320, PGROUND + 14, m(0.4));
+    ropeCoil(n, 466, PGROUND + 12, m(0.32));
 
     // block and tackle swinging off the yard
     pxLine(n, 300, 46, 300, 96, 1, ROPE);
