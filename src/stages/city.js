@@ -1,7 +1,7 @@
 import { PW, PH, PGROUND } from '../pixel/buffer.js';
 import { pxRect, pxLine, pxCircle, pxDot, pxTri, pxEllipse } from '../pixel/draw.js';
 import { ditherGradient } from '../pixel/dither.js';
-import { layer, glow, block, signBoard, banner, crate, barrel, bystander } from './props.js';
+import { layer, glow, block, signBoard, banner, crate, barrel, crowd } from './props.js';
 import { windowLights, starField, rng } from './scenery.js';
 
 /* A rooftop at night, high above the city.
@@ -10,12 +10,20 @@ import { windowLights, starField, rng } from './scenery.js';
    *below* the fighters, behind a parapet, and the only tall things in frame
    are a water tower and a billboard. The read is height, not enclosure. */
 
-const PAL = {
-  crowd: [
-    { base: '#2f3f6b', hi: '#4d63a0', lo: '#1c2647', belt: '#141a33', shoe: '#12101f', skin: '#e8b487', skinHi: '#ffd6ab', hair: '#1a1626' },
-    { base: '#8c3a5c', hi: '#b85f84', lo: '#5c2139', belt: '#2f1626', shoe: '#12101f', skin: '#f0c090', skinHi: '#ffdcb4', hair: '#2b1f38' },
-    { base: '#3f7a6b', hi: '#5fa892', lo: '#265046', belt: '#17332c', shoe: '#12101f', skin: '#d9a878', skinHi: '#f6cb9c', hair: '#241d33' },
-  ],
+/* City clothes at night: coats, caps and hoods in colours the neon can pick
+   out, over a crowd washed cold so it stays behind the fight. */
+const CROWD = {
+  cloth: ['#2f3f6b', '#8c3a5c', '#3f7a6b', '#4a4460', '#7a5a3a', '#2f5f7a',
+          '#6b3a6b', '#3a4450', '#a05a3c', '#4f5a68'],
+  alt:   ['#2b2d42', '#3a3348', '#26303f', '#43384a'],
+  trim:  ['#ffd166', '#e8563c', '#9fd4ff', '#f0e0c8'],
+  hats:  ['#1f1b30', '#8c3a5c', '#2f3f6b', '#ffd166', '#3f7a6b', '#4f5a68'],
+  light: '#ffd9a0',
+  shoe:  '#12101f',
+  heads: ['cap', 'cap', 'hood', 'hood', 'bare', 'short', 'tail', 'bun',
+          'long', 'brim', 'bald'],
+  garbs: ['coat', 'coat', 'tunic', 'vest', 'tunic'],
+  loads: [null, null, null, null, null, 'sack', 'jug'],
 };
 
 const PARAPET_Y = PGROUND - 30;
@@ -111,13 +119,15 @@ export function paint(c) {
   }), 0, 0);
 
   /* ---- crowd: watching from the fire escape and the far corner ---- */
-  c.drawImage(layer((p) => {
-    bystander(p, 150, PARAPET_Y + 2, 40, PAL.crowd[0], 'crossed', 1);
-    bystander(p, 300, PARAPET_Y + 2, 41, PAL.crowd[1], 'point', -1);
-    bystander(p, 246, PARAPET_Y - 1, 34, PAL.crowd[2], 'stand', -1);
-    bystander(p, 30, PGROUND + 4, 48, PAL.crowd[1], 'cheer', 1);
-    bystander(p, 452, PGROUND + 4, 48, PAL.crowd[2], 'crossed', -1);
-  }), 0, 0);
+  c.drawImage(crowd([
+    { x: 150, y: PARAPET_Y + 2, h: 40, face: 1, pose: 'crossed' },
+    { x: 300, y: PARAPET_Y + 2, h: 41, face: -1, pose: 'point' },
+    { x: 246, y: PARAPET_Y - 1, h: 34, face: -1, pose: 'talk' },
+    { x: 228, y: PARAPET_Y - 1, h: 33, face: 1, pose: 'talk' },
+    { x: 30, y: PGROUND + 4, h: 48, face: 1, pose: 'cheer' },
+    { x: 452, y: PGROUND + 4, h: 48, face: -1, pose: 'crossed' },
+    { x: 418, y: PGROUND + 2, h: 45, face: -1, pose: 'sit', garb: 'coat' },
+  ], CROWD, { seed: 8080, haze: 'rgba(24, 22, 58, 0.20)' }), 0, 0);
 
   /* ---- near: rooftop clutter ---- */
   c.drawImage(layer((n) => {

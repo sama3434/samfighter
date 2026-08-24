@@ -3,10 +3,11 @@ import { stage as temple } from './temple.js';
 import { stage as pyramids } from './pyramids.js';
 import { stage as city } from './city.js';
 import { stage as mountain } from './mountain.js';
+import { stage as pirate } from './pirate.js';
 
 /* Stage registry. Adding a stage means writing one module and adding it to
    this list -- nothing else in the game needs to know about it. */
-export const STAGES = [temple, pyramids, city, mountain];
+export const STAGES = [temple, pyramids, city, mountain, pirate];
 
 /* Stages are expensive to paint (a 480x235 dithered sky and a few hundred
    details), so each one is rendered once into its own canvas and blitted
@@ -33,7 +34,8 @@ export function warmStages() {
 
 /* Drifting overlay particles (petals, snow, birds). Owned here so stages stay
    pure paint functions. */
-const COUNTS = { snow: 90, petals: 50, birds: 6, none: 0 };
+export const DRIFT_COUNTS = Object.freeze({ snow: 90, petals: 50, birds: 6, spray: 80, none: 0 });
+const COUNTS = DRIFT_COUNTS;
 let drifters = [];
 
 export function seedDrifters(kind) {
