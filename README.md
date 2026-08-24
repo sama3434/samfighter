@@ -136,6 +136,13 @@ something.
 Each stage is painted once into a cached canvas (about 13ms) and blitted thereafter;
 only the animated overlay — petals, snow, birds, neon flicker — is redrawn per frame.
 
+**Tuning** is split by intent. `config.js` holds the numbers you reach for when the
+game feels wrong — damage per attack, chip damage, health, round length, gravity, walk
+speed, jump height. `moves.js` holds frame data and hitbox geometry: what a move *does*,
+not how hard it lands. Damage is wired from config into the move table by key, and a
+test asserts every move is covered, since a missing entry would otherwise turn a
+fighter's health into `NaN` on the first hit rather than failing anywhere useful.
+
 **The simulation** runs at a fixed 60Hz on an accumulator, decoupled from render, so the
 game plays identically regardless of display refresh rate. Moves are frame data
 (`startup` / `active` / `recovery`), and a hitbox exists only during active frames, so

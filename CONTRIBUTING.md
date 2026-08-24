@@ -30,10 +30,10 @@ can work at once without editing the same file.
 
 | Module | Owns | Safe to change alone? |
 |---|---|---|
-| `src/config.js` | World constants and tuning | No — affects everything |
+| `src/config.js` | World constants, damage, tuning | No — affects everything |
 | `src/characters.js` | The roster: builds and palettes | Yes — pure data |
 | `src/select.js` | Character select state | Yes |
-| `src/moves.js` | Frame data for every attack | Yes, but rerun combat tests |
+| `src/moves.js` | Frame data and hitboxes (not damage) | Yes, but rerun combat tests |
 | `src/fighter.js` | Physics, stance, attack state machine | Yes |
 | `src/combat.js` | Hit resolution, blocking, pushing apart | Yes |
 | `src/match.js` | Round and match flow, effects state | Yes |
@@ -103,10 +103,30 @@ half-finished entry before it reaches the canvas.
 
 ## Adding a move
 
-1. Add an entry to `src/moves.js` with its frame data.
-2. Trigger it in `Fighter.update()` in `src/fighter.js`.
-3. Give it a pose branch in `src/render/poses.js`.
-4. Add a combat test asserting its damage, reach, and how blocking answers it.
+1. Add its damage to `DAMAGE` and `CHIP_DAMAGE` in `src/config.js`, keyed by the move
+   name.
+2. Add an entry to `src/moves.js` with its frame data and geometry, taking `dmg` and
+   `chip` from those config maps.
+3. Trigger it in `Fighter.update()` in `src/fighter.js`.
+4. Give it a pose branch in `src/render/poses.js`.
+5. Add a combat test asserting its damage, reach, and how blocking answers it.
+
+Steps 1 and 2 are separate on purpose: `config.js` is where you tune how hard things
+hit, `moves.js` is where you change how a move behaves. `tests/tuning.test.js` fails if
+a move has no damage entry, or an entry has no move.
+
+## Tuning the game's feel
+
+| Want to change | Edit |
+|---|---|
+| How hard attacks hit | `DAMAGE` / `CHIP_DAMAGE` in `config.js` |
+| How long a round lasts | `ROUND_TIME`, `MAX_HP` in `config.js` |
+| How fast fighters move | `MOVE_SPEED`, `FRICTION`, `BACKWALK` in `config.js` |
+| Jump height and weight | `JUMP_V`, `GRAVITY`, `AIR_DRIFT` in `config.js` |
+| How fast a move comes out | `startup` / `active` / `recovery` in `moves.js` |
+| How far a move reaches | `reach` / `top` / `h` in `moves.js` |
+| How much a hit staggers | `hitstun` / `blockstun` / `kb` in `moves.js` |
+| How fast the special charges | `meterGain` in `moves.js`, `METER_MAX` in `config.js` |
 
 ## Working concurrently with git worktrees
 

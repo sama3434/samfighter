@@ -34,7 +34,7 @@ export function resolveHits(attacker, defender, fx) {
     blocked,
     x: dir > 0 ? box.x + box.w : box.x,
     y: box.y + box.h / 2,
-    heavy: m.dmg >= 12,
+    heavy: m.dmg >= C.HEAVY_HIT_DAMAGE,
   };
   if (fx) fx(hit);
   return hit;
