@@ -90,3 +90,33 @@ canvas {
   padding: 1px 5px;
   font-weight: 600;
 }
+
+/* Music indicator — a DOM strip under the canvas rather than pixels in the
+   buffer, so the renderer never has to know the music exists. */
+#music-hud {
+  width: min(100%, 960px);
+  margin-top: -10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  font: 11px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  opacity: .5;
+  transition: opacity .45s ease, color .45s ease;
+  user-select: none;
+}
+
+#music-hud.lit { opacity: 1; color: var(--text); }
+#music-hud.muted { color: #ff8a7d; }
+#music-hud b { color: inherit; font-weight: 700; }
+#music-hud .vol { color: inherit; opacity: .8; }
+#music-hud .keys {
+  color: var(--dim);
+  opacity: .7;
+  border-left: 1px solid var(--edge);
+  padding-left: 10px;
+  letter-spacing: .1em;
+}

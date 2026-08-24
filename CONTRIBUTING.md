@@ -38,7 +38,11 @@ can work at once without editing the same file.
 | `src/combat.js` | Hit resolution, blocking, pushing apart | Yes |
 | `src/match.js` | Round and match flow, effects state | Yes |
 | `src/input.js` | Key state and control schemes | Yes |
-| `src/audio.js` | Synthesized sound | Yes |
+| `src/audio.js` | Synthesized sound effects | Yes |
+| `src/music.js` | Which track plays, and when | Yes |
+| `src/music/engine.js` | Audio graph, scheduler, voice dispatch | Yes |
+| `src/music/voices.js` | The synth instruments | Yes |
+| `src/music/tracks/*.js` | One track's data | Yes — fully independent |
 | `src/pixel/*` | Buffer, primitives, dithering, outline, font | Yes |
 | `src/render/poses.js` | The fighter skeleton per state | Yes |
 | `src/render/sprite.js` | How a fighter is drawn | Yes |
@@ -89,6 +93,54 @@ Three things to keep in mind:
   street, open plain, elevated rooftop, asymmetric span. Reusing the same
   building-left / gap / building-right arrangement is what makes stages blur together
   even when the palettes differ.
+
+## Adding a track
+
+1. Copy `src/music/tracks/ironmarket.js` to `src/music/tracks/yours.js`.
+2. Give it a `key`, a `name`, a `bpm`, `lanes`, `patterns` and `sections`.
+3. Import it in `src/music/tracks/index.js` and add its key to `FIGHT_TRACKS`.
+
+Nothing else changes — no engine code is involved in writing a track.
+
+**Lanes** map a name to a synth voice plus its gain and parameters. The voices
+live in `src/music/voices.js`: `kick snare clap hat shaker tom crash` (drums),
+`bass lead pluck` (one note at a time), `stab pad` (chords), `riser fall`
+(effects). Every voice is trimmed to the same output level, so a lane gain
+means what it says.
+
+**Patterns** are one token per sixteenth, whitespace-separated, with `|` free to
+use as a bar line:
+
+```
+kickMain: ` X . . . | X . . . | X . . . | X . . . `
+bassRoll: ` F1 . F1 - | . F1 . F1 | . . F1 - | F1 . C2 . `
+padBed:   ` F2+Ab2+C3 -*15 `
+```
+
+`.` rests, `-` ties the previous note one step longer, `X x o i` are drum hits
+loud to soft, a note name is `F2` / `Ab1` / `C#4` with octave 4 holding middle
+C, `+` stacks a chord, `C4!` accents, `C4:0.3` sets a velocity outright, and
+`-*15` repeats the previous token. A pattern shorter than its section loops
+inside it, so a one-bar hat pattern covers a sixteen-bar drop.
+
+**Sections** are the arrangement. Each has `bars`, a `play` map of lane to
+pattern, and an optional `cutoff` (the master filter, which is how an intro
+sounds muffled and a drop sounds open) and `gain`.
+
+Name the sections `intro`, `drop` and `final` at minimum: the match state
+machine in `src/music.js` asks for those by name — `intro` during the round
+intro, `drop` on FIGHT!, `final` in the last ten seconds. Anything else you add
+plays in order and then loops.
+
+Two things worth knowing:
+
+- **Levels are measured, not guessed.** `VOICE_TRIM` in `voices.js` came from
+  rendering each voice alone through an `OfflineAudioContext` and reading its
+  peak. If you change a voice's envelope, re-measure it, or the whole mix moves.
+- **Check a track by rendering it, not by reading it.** `renderOffline(track,
+  seconds, { section })` in `engine.js` returns an AudioBuffer with no sound
+  card involved, which is the only way to see that a lane is silent, a mix is
+  lopsided or the master is clipping.
 
 ## Adding a character
 

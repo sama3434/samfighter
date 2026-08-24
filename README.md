@@ -52,6 +52,9 @@ load over `file://`, so it needs a server even though nothing is compiled.
 | Block | `H` | `/` |
 | Special | `Q` | `M` |
 
+Music is shared: `N` mutes and unmutes it, `[` and `]` move the volume, and the
+strip under the game shows the track that is playing.
+
 - **Special** — the bar along the bottom fills as you land hits: four kicks or eight
   punches. When it is full, one press spends the whole bar on a spinning sweep that
   reaches **both ways at once** and leaves whoever it touches **stunned for 0.7
@@ -83,7 +86,9 @@ src/
   combat.js         hit resolution, blocking, pushing apart
   match.js          round and match flow
   input.js          key state and control schemes
-  audio.js          synthesized sound
+  audio.js          synthesized sound effects
+  music.js          which track plays, and when
+  music/            the music engine: voices, sequencer, one file per track
   pixel/            buffer, primitives, dithering, outline, bitmap font
   render/           poses, fighter sprites, HUD, select screen, frame composition
   stages/           one module per stage, plus shared props and the registry
@@ -135,6 +140,20 @@ something.
 
 Each stage is painted once into a cached canvas (about 13ms) and blitted thereafter;
 only the animated overlay — petals, snow, birds, neon flicker — is redrawn per frame.
+
+**Music** is synthesized the same way the effects are — no audio files, no
+build step. `src/music/engine.js` runs a lookahead scheduler: a 25ms timer asks
+the sequencer for every note starting inside the next 200ms and hands them to
+WebAudio with absolute `AudioContext` timestamps, so the beat does not drift
+when the main thread is busy drawing. The render loop pays nothing for it; the
+only per-frame music work is `Music.sync()`, a handful of comparisons against
+the match state.
+
+A track is data, not code: sixteenth-step patterns written as text grids, a set
+of lanes naming which synth voice plays which pattern, and an arrangement of
+sections. Three fight tracks rotate one per round, and the arrangement follows
+the match — filtered during the round intro, dropping on FIGHT!, lifting a
+little in the last ten seconds, collapsing at a KO.
 
 **Tuning** is split by intent. `config.js` holds the numbers you reach for when the
 game feels wrong — damage per attack, chip damage, health, round length, gravity, walk
