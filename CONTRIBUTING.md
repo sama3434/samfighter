@@ -42,6 +42,7 @@ can work at once without editing the same file.
 | `src/pixel/*` | Buffer, primitives, dithering, outline, font | Yes |
 | `src/render/poses.js` | The fighter skeleton per state | Yes |
 | `src/render/sprite.js` | How a fighter is drawn | Yes |
+| `src/render/frames/*` | Hand-drawn sprite frames, one file per fighter | Yes — pure data |
 | `src/render/hud.js` | Bars, timer, banner | Yes |
 | `src/render/select.js` | Character select screen art | Yes |
 | `src/render/scene.js` | Frame composition | Rarely |
@@ -100,6 +101,55 @@ Three things to keep in mind:
 The select screen sizes itself from the roster length, so nothing else changes. The
 roster test checks every palette tone and build field is present, which catches a
 half-finished entry before it reaches the canvas.
+
+## Adding a sprite frame
+
+Fighters are drawn from hand-authored frames where one exists and fall back to
+the procedural skeleton where one does not, so frames can land one at a time
+and the game never stops being playable.
+
+A frame lives in `src/render/frames/<fighter>.js` and is three fields:
+
+```js
+const BLOCK = {
+  ax: 28, ay: 118,          // where the soles meet the floor, inside the picture
+  rows: [
+    '..........hhhhh.........',   // one string per pixel row
+    '.........hhsssshh.......',   // one character per pixel
+    ...
+  ],
+};
+```
+
+Characters name a **material**, never a colour — see `frames/glyphs.js` for the
+alphabet (`o O q` gi, `s S x` skin, `h H` hair, `b B` belt and headband,
+`g G c` glove, `.` transparent). That is what lets one picture render in both
+players' palettes, which is what makes a mirror match legible.
+
+1. Draw the frame and add it to the sheet's export at the bottom of the file.
+   Single-frame poses take the frame directly (`block: BLOCK`); cycles take an
+   array (`idle: [IDLE0, IDLE1]`); attacks take phases
+   (`kick: { startup: KICK_S, active: KICK_A }`).
+2. If the pose is not already wired, add a `case` to `frameFor()` in
+   `frames/index.js` keyed off `pose.kind`.
+3. Open <http://localhost:8123/tools/sprite-lab.html> and look at it. The lab
+   renders every frame in both palettes, next to the procedural figure, at any
+   zoom — the procedural figure is there so you can check the new frame stands
+   the same height.
+
+Three rules the tests enforce, because none of them fail loudly on their own:
+
+- **Every row is the same length.** A row one character short shears the
+  picture.
+- **Feet on the anchor.** `ay` is the floor line: the lowest drawn row must be
+  `ay - 1`. A frame that floats or sinks desynchronises from the hurtbox, which
+  is fixed at `STAND_H` and cannot move to meet it.
+- **No pinholes.** A transparent pixel walled in on all four sides gets filled
+  by the keyline pass and comes out as a black speck inside the figure.
+
+An attack's reach has to match `moves.js`: `reach` is in world units, and the
+buffer is half that, so a punch at `reach: 132` wants its fist about 66 pixels
+in front of `ax`.
 
 ## Adding a move
 

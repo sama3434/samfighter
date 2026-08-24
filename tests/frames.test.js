@@ -135,6 +135,30 @@ describe('frame rendering', () => {
     }
   });
 
+  it('leaves no pinholes for the keyline to fall into', () => {
+    /* A transparent pixel with solid neighbours on all four sides is a hole
+       inside the figure. The keyline pass fills every such pixel, so what
+       started as a one-pixel gap in a diagonal limb comes out as a speck of
+       black scattered across a thigh. */
+    for (const [name, f] of allFrames()) {
+      const w = f.rows[0].length, h = f.rows.length;
+      const solid = (x, y) =>
+        x < 0 || y < 0 || x >= w || y >= h ? false : f.rows[y][x] !== '.';
+      const holes = [];
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          if (f.rows[y][x] !== '.') continue;
+          if (solid(x - 1, y) && solid(x + 1, y) && solid(x, y - 1) && solid(x, y + 1)) {
+            holes.push(`${x},${y}`);
+          }
+        }
+      }
+      if (holes.length) {
+        throw new Error(`${name} has ${holes.length} pinhole(s): ${holes.slice(0, 5).join(' ')}`);
+      }
+    }
+  });
+
   it('bakes the same frame once and hands the same canvas back', () => {
     const [, f] = allFrames()[0];
     const p = CHARACTERS[0].palettes.p1;
