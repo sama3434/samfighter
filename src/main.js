@@ -2,6 +2,8 @@ import * as C from './config.js';
 import { Fighter } from './fighter.js';
 import { Match } from './match.js';
 import { SelectScreen } from './select.js';
+import { ModeScreen } from './mode.js';
+import { AIController } from './ai.js';
 import { CHARACTERS } from './characters.js';
 import { SCHEMES, input, attachInput } from './input.js';
 import { Sound } from './audio.js';
@@ -10,30 +12,44 @@ import { installMusicUI } from './music/ui.js';
 import { STAGES, warmStages, seedDrifters } from './stages/index.js';
 import { renderFrame } from './render/scene.js';
 import { renderSelect } from './render/select.js';
+import { renderMode } from './render/mode.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
-/* Two screens: pick your fighter, then fight. The select screen owns the
-   picks; the match is rebuilt from them each time so a rematch can change
-   characters. */
+/* Three screens: pick a mode, pick your fighter, then fight. The select
+   screen owns the picks; the match is rebuilt from them each time so a
+   rematch can change characters. In a computer match, player two is driven
+   by an AIController writing into its own { held, pressed } pair -- the
+   fighter cannot tell the difference. */
+const mode = new ModeScreen({ schemes: SCHEMES, sound: Sound });
 const select = new SelectScreen({ schemes: SCHEMES, roster: CHARACTERS, sound: Sound });
-let screen = 'select';
+let screen = 'mode';
 let match = null;
+let cpu = null;
 
-function startMatch([first, second]) {
+function startMatch([first, second], { cpuLevel = null, seed } = {}) {
+  cpu = cpuLevel
+    ? new AIController({
+        level: cpuLevel, scheme: SCHEMES[1],
+        seed: seed !== undefined ? seed : (Math.random() * 2 ** 31) | 0,
+      })
+    : null;
+
   const p1 = new Fighter({
     startX: 300, facing: 1, scheme: SCHEMES[0], input,
     character: first, slot: 'p1', hudColour: '#8fc0f8',
   });
   const p2 = new Fighter({
-    startX: 660, facing: -1, scheme: SCHEMES[1], input,
+    startX: 660, facing: -1, scheme: SCHEMES[1], input: cpu ? cpu.input : input,
     character: second, slot: 'p2', hudColour: '#ff9b8c',
   });
 
   // a mirror match needs the names distinguished, or the HUD lies
-  if (first === second) {
+  if (cpu) {
+    p2.name = `${second.name} CPU L${cpuLevel}`;
+  } else if (first === second) {
     p1.name = `${first.name} 1P`;
     p2.name = `${second.name} 2P`;
   }
@@ -50,9 +66,26 @@ function tick() {
      unaware that any of this exists. */
   Music.sync(screen, match);
 
+  if (screen === 'mode') {
+    const choice = mode.update(input);
+    if (choice) {
+      select.setCpu(choice.mode === 'cpu' ? choice.level : null);
+      select.reset();
+      screen = 'select';
+    }
+    return;
+  }
+
   if (screen === 'select') {
+    // Escape backs out to the mode screen
+    if (input.pressed.has('escape')) {
+      input.pressed.clear();
+      mode.reset();
+      screen = 'mode';
+      return;
+    }
     const picks = select.update(input);
-    if (picks) startMatch(picks);
+    if (picks) startMatch(picks, { cpuLevel: select.cpu });
     return;
   }
 
@@ -63,11 +96,13 @@ function tick() {
     screen = 'select';
     return;
   }
+  if (cpu) cpu.update(match);
   match.update(input);
 }
 
 function draw() {
-  if (screen === 'select') renderSelect(ctx, select, CHARACTERS);
+  if (screen === 'mode') renderMode(ctx, mode);
+  else if (screen === 'select') renderSelect(ctx, select, CHARACTERS);
   else renderFrame(ctx, match);
 }
 
@@ -105,5 +140,6 @@ requestAnimationFrame(frame);
 window.SAMFIGHTER = {
   get match() { return match; },
   get screen() { return screen; },
-  select, input, C, CHARACTERS, startMatch, Music, Sound,
+  get cpu() { return cpu; },
+  mode, select, input, C, CHARACTERS, startMatch, Music, Sound,
 };

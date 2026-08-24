@@ -94,10 +94,11 @@ function drawCard(character, index, count, frame, state) {
       drawText(pctx, tick, x + CARD_W / 2, by + 8, col, 1, 'center');
     }
 
-    const tag = player === 0 ? '1P' : '2P';
-    const tx = player === 0 ? bx : bx + bw - 17;
-    pxRect(pctx, tx, by - 13, 17, 12, '#0f0b1e');
-    pxRect(pctx, tx + 1, by - 12, 15, 10, col);
+    const tag = player === 0 ? '1P' : (state.cpu ? 'CPU' : '2P');
+    const tagW = textWidth(tag, 1) + 6;
+    const tx = player === 0 ? bx : bx + bw - tagW;
+    pxRect(pctx, tx, by - 13, tagW, 12, '#0f0b1e');
+    pxRect(pctx, tx + 1, by - 12, tagW - 2, 10, col);
     drawText(pctx, tag, tx + 3, by - 10, '#0f0b1e', 1, 'left');
   }
 }
@@ -112,15 +113,20 @@ function drawFooter(state, roster) {
     const col = i === 0 ? '#8fc0f8' : '#ff9b8c';
     const x = i === 0 ? 10 : PW - 10;
     const align = i === 0 ? 'left' : 'right';
-    drawText(pctx, `${i === 0 ? '1P' : '2P'} ${roster[state.cursor[i]].name}`,
+    const who = i === 0 ? '1P' : (state.cpu ? `CPU L${state.cpu}` : '2P');
+    drawText(pctx, `${who} ${roster[state.cursor[i]].name}`,
              x, PH - 29, col, 1, align);
-    drawText(pctx, locked ? 'READY' : 'CHOOSING', x, PH - 19,
+    const status = state.cpu && i === 1 && !locked && !state.locked[0]
+      ? 'WAITING' : (locked ? 'READY' : 'CHOOSING');
+    drawText(pctx, status, x, PH - 19,
              locked ? '#7fe0a8' : '#6b6489', 1, align);
   }
 
   const hint = state.bothLocked
     ? 'GET READY'
-    : 'LEFT / RIGHT TO CHOOSE      UP TO LOCK IN      DOWN TO CANCEL';
+    : (state.cpu && state.locked[0]
+      ? 'THE COMPUTER IS CHOOSING'
+      : 'LEFT / RIGHT TO CHOOSE      UP TO LOCK IN      DOWN TO CANCEL');
   drawText(pctx, hint, PW / 2, PH - 9,
            state.bothLocked ? '#ffd23f' : '#a89fc4', 1, 'center');
 }
