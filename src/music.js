@@ -43,6 +43,16 @@ function savePrefs(prefs) {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(prefs)); } catch (err) { /* private mode */ }
 }
 
+/** Next fight track after `key`, wrapping. Pure, so it can be tested without
+    an audio context. `dir` of -1 steps backwards. */
+export function nextTrackKey(key, dir = 1) {
+  const i = FIGHT_TRACKS.indexOf(key);
+  const n = FIGHT_TRACKS.length;
+  // an unknown or menu track counts as "before the first", so T starts at the top
+  if (i === -1) return FIGHT_TRACKS[dir > 0 ? 0 : n - 1];
+  return FIGHT_TRACKS[(i + dir + n) % n];
+}
+
 export const Music = {
   engine: null,
   volume: 0.75,
@@ -58,6 +68,7 @@ export const Music = {
   matchEndAt: 0,
   pendingScreen: null,     // last state seen before the engine existed
   pendingMatch: null,
+  trackOverride: null,     // set by the track hotkey; outranks the rotation
 
   /* ------------------------------------------------------------- lifecycle */
 
@@ -104,6 +115,25 @@ export const Music = {
 
   toggleMute() { this.setMuted(!this.muted); },
 
+  /* Step to the next fight track and play it now. The choice is remembered,
+     so it survives the round change that would otherwise rotate the track
+     back out from under the player. */
+  cycleTrack(dir = 1) {
+    const key = nextTrackKey(this.engine && this.engine.trackKey, dir);
+    this.trackOverride = key;
+    if (!this.engine) { this.emitChange(); return key; }
+
+    // mid-fight, drop straight into the body of the track rather than the
+    // filtered intro -- the player asked to hear this one
+    const inFight = this.mode === 'match' && this.lastPhase === 'fight';
+    this.engine.start(TRACKS[key], {
+      section: inFight ? 'drop' : 'intro',
+      fadeIn: 0.2,
+    });
+    this.emitChange();
+    return key;
+  },
+
   emitChange() { if (this.onChange) this.onChange(this); },
 
   /** Wired to Sound.onCue so effects punch a hole in the music. */
@@ -138,8 +168,9 @@ export const Music = {
       this.mode = 'match';
     }
 
-    // one track per round, rotated, so a three-round match is three tracks
-    const key = FIGHT_TRACKS[
+    // one track per round, rotated -- unless the player picked one with the
+    // track key, in which case their choice sticks until they change it
+    const key = this.trackOverride || FIGHT_TRACKS[
       Math.abs(match.stageStart + match.round) % FIGHT_TRACKS.length
     ];
 

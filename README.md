@@ -71,6 +71,9 @@ strip under the game shows the track that is playing.
   takes it, and equal health is a draw.
 - `Enter` restarts a match in progress; once someone has won, it returns you to the
   character select.
+- **Music** — `N` mutes, `[` and `]` set volume, `T` steps to the next fight track and
+  `shift+T` steps back. A track picked by hand sticks until you change it again,
+  instead of being rotated away at the next round. All settings persist.
 
 ## Layout
 

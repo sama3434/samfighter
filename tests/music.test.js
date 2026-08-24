@@ -1,4 +1,6 @@
 import { describe, it, expect } from './harness.js';
+import { nextTrackKey } from '../src/music.js';
+import { MUSIC_KEYS } from '../src/music/ui.js';
 import { noteToMidi, midiToFreq, parsePattern } from '../src/music/pattern.js';
 import { compileTrack, Sequencer } from '../src/music/sequencer.js';
 import { VOICE_KIND, MIX_TRIM, LOOKAHEAD, SCAN_MS } from '../src/music/engine.js';
@@ -320,5 +322,56 @@ describe('music / mix and controls', () => {
   it('ignores a cue when no engine has been attached', () => {
     Music.cue('punch');
     Music.cue('nonsense');
+  });
+});
+
+describe('track switching', () => {
+  it('steps forward through every fight track and wraps', () => {
+    const seen = [];
+    let key = FIGHT_TRACKS[0];
+    for (let i = 0; i < FIGHT_TRACKS.length; i++) {
+      seen.push(key);
+      key = nextTrackKey(key, 1);
+    }
+    expect(new Set(seen).size).toBe(FIGHT_TRACKS.length);
+    expect(key).toBe(FIGHT_TRACKS[0]);
+  });
+
+  it('steps backwards too', () => {
+    const first = FIGHT_TRACKS[0];
+    expect(nextTrackKey(first, -1)).toBe(FIGHT_TRACKS[FIGHT_TRACKS.length - 1]);
+  });
+
+  it('starts at the top when the current track is the menu loop or unknown', () => {
+    expect(nextTrackKey(MENU_TRACK, 1)).toBe(FIGHT_TRACKS[0]);
+    expect(nextTrackKey(undefined, 1)).toBe(FIGHT_TRACKS[0]);
+    expect(nextTrackKey(null, 1)).toBe(FIGHT_TRACKS[0]);
+  });
+
+  it('never lands on the menu track', () => {
+    let key = FIGHT_TRACKS[0];
+    for (let i = 0; i < FIGHT_TRACKS.length * 3; i++) {
+      key = nextTrackKey(key, 1);
+      expect(key === MENU_TRACK).toBeFalsy();
+    }
+  });
+});
+
+describe('music keys', () => {
+  it('are all distinct', () => {
+    const keys = Object.values(MUSIC_KEYS);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('do not collide with anything a fighter uses', () => {
+    // both control schemes, plus the match-level restart key
+    const gameplay = new Set([
+      'a', 'd', 'w', 's', 'f', 'g', 'h', 'q',
+      'arrowleft', 'arrowright', 'arrowup', 'arrowdown', ',', '.', '/', 'm',
+      'enter',
+    ]);
+    for (const k of Object.values(MUSIC_KEYS)) {
+      if (gameplay.has(k)) throw new Error(`music key "${k}" is already a gameplay key`);
+    }
   });
 });

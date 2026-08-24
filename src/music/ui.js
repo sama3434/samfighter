@@ -6,7 +6,7 @@
    dims back down between times. It sat over the top-right of the canvas at
    first, which put it straight on top of player two's health bar. */
 
-export const MUSIC_KEYS = { mute: 'n', down: '[', up: ']' };
+export const MUSIC_KEYS = { mute: 'n', down: '[', up: ']', track: 't' };
 
 const FLASH_MS = 1800;
 
@@ -18,7 +18,7 @@ export function installMusicUI(Music, { root = null, target = window } = {}) {
   chip.id = 'music-hud';
   chip.setAttribute('aria-live', 'polite');
   chip.innerHTML = '<b>♪</b><span class="track"></span><span class="vol"></span>'
-    + '<span class="keys">N mute &nbsp; [ ] volume</span>';
+    + '<span class="keys">N mute &nbsp; [ ] volume &nbsp; T track</span>';
   if (frame && frame.parentNode) frame.parentNode.insertBefore(chip, frame.nextSibling);
   else document.body.appendChild(chip);
 
@@ -57,6 +57,7 @@ export function installMusicUI(Music, { root = null, target = window } = {}) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key.toLowerCase();
     if (k === MUSIC_KEYS.mute) Music.toggleMute();
+    else if (k === MUSIC_KEYS.track) Music.cycleTrack(e.shiftKey ? -1 : 1);
     else if (k === MUSIC_KEYS.down) Music.nudgeVolume(-0.1);
     else if (k === MUSIC_KEYS.up) Music.nudgeVolume(0.1);
     else return;
