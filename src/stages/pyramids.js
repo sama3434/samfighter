@@ -1,16 +1,23 @@
 import { PW, PH, PGROUND } from '../pixel/buffer.js';
 import { pxRect, pxLine, pxCircle, pxDot, pxTri, pxEllipse } from '../pixel/draw.js';
 import { ditherGradient, ditherDisc, ditherBand } from '../pixel/dither.js';
-import { layer, glow, signBoard, banner, crate, barrel, basket, sack,
-         crowd, paving, glyphMark } from './props.js';
-import { palmTree, rng } from './scenery.js';
+import { layer, glow, crate, basket, sack,
+         crowd, paving, glyphMark, makeDepth, person, METRE, mixCol } from './props.js';
+import { rng } from './scenery.js';
 
 /* An open excavation site under the pyramids.
 
    Deliberately the opposite shape to the market street: no buildings framing
    the sides, a low horizon, and enormous silhouettes doing the work instead.
-   Scale is the whole point here -- the pyramids run off the top of the frame
-   and the colossus is taller than the fighters by half again. */
+   Scale is the whole point here. The pyramids sit on the horizon and still
+   run off the top of the frame; the colossus stands in the middle distance
+   and the frame cuts it off at the waist -- what shows is its plinth, its
+   legs and its fists, and the crowd of diggers working under it is sized by
+   where each one's feet meet the plain. */
+
+export const DEPTH = makeDepth(132);
+const D = DEPTH;
+const HORIZON = D.horizonY;
 
 /* Bleached linen, dyed wool and a lot of sun. Almost everyone here has their
    head covered, which is what makes the crowd read as a desert crowd from
@@ -29,16 +36,19 @@ const CROWD = {
   loads: [null, null, null, null, 'jug', 'basket', 'sack', 'staff'],
 };
 
-/** A pyramid big enough to leave the frame. */
-function pyramid(c, px, baseY, halfW, h) {
-  pxTri(c, px - halfW, baseY, px + halfW, baseY, px, baseY - h, '#c9a05e');
-  pxTri(c, px, baseY, px + halfW, baseY, px, baseY - h, '#9d7440');
-  for (let i = 6; i < h; i += 7) {
+/** A pyramid sitting on the horizon. `haze` fades it into the sky. */
+function pyramid(c, px, baseY, halfW, haze) {
+  const h = Math.round(halfW * 1.27);                 // the true 52-degree slope
+  const lit = mixCol('#c9a05e', '#cfe0ec', haze);
+  const dark = mixCol('#9d7440', '#a8c2d4', haze);
+  const edge = mixCol('#876636', '#93aec0', haze);
+  pxTri(c, px - halfW, baseY, px + halfW, baseY, px, baseY - h, lit);
+  pxTri(c, px, baseY, px + halfW, baseY, px, baseY - h, dark);
+  for (let i = 8; i < Math.min(h, baseY + 40); i += 9) {   // core courses
     const w = Math.round(halfW * (1 - i / h));
-    pxRect(c, px - w, baseY - i, w * 2, 1, 'rgba(92,62,30,0.26)');
+    pxRect(c, px - w, baseY - i, w * 2, 1, `rgba(92, 62, 30, ${0.22 - haze * 0.18})`);
   }
-  pxLine(c, px, baseY - h, px, baseY, 1, '#876636');
-  pxTri(c, px - halfW - 20, baseY, px - halfW + 14, baseY, px - halfW, baseY - 10, '#dfbe80');
+  pxLine(c, px, baseY - h, px, baseY, 1, edge);
 }
 
 /* Weathered limestone, six tones. Sculpture reads as sculpture because of the
@@ -341,87 +351,188 @@ function colossus(c, x, baseY, h) {
   c.restore();
 }
 
+/* Everyone on the site, placed by where their feet meet the plain. Nobody
+   stands on the fighters' own plane -- the dig crew works the middle
+   distance, between the colossus and the tents. */
+export const PEOPLE = [
+  // under the colossus, dwarfed by its plinth
+  person(D, 148, 176, { pose: 'point', face: -1, load: null }),
+  person(D, 172, 179, { pose: 'shoulder', face: -1, load: 'sack' }),
+  // hauling across the open middle of the site
+  person(D, 232, 178, { pose: 'carry', face: 1, load: 'jug' }),
+  person(D, 209, 181, { pose: 'carry', face: 1, load: 'sack' }),
+  // by the colonnade
+  person(D, 302, 167, { pose: 'talk', face: 1 }),
+  person(D, 322, 165, { pose: 'talk', face: -1 }),
+  // the camp, off to the right
+  person(D, 398, 194, { pose: 'crossed', face: -1, load: null }),
+  person(D, 452, 187, { pose: 'sit', garb: 'robe', load: null }),
+];
+
+/** One ruined column, broken off at `frac` of its height. */
+function column(m, x, feetY, frac) {
+  const s = D.scale(feetY);
+  const h = Math.round(8 * METRE * s * frac);
+  const w = Math.round(1.0 * METRE * s);
+  pxRect(m, x, feetY - h, w, h, '#c6ac74');
+  pxRect(m, x, feetY - h, Math.max(2, Math.round(w * 0.26)), h, '#dcc48a');
+  pxRect(m, x + w - Math.max(2, Math.round(w * 0.26)), feetY - h, Math.max(2, Math.round(w * 0.26)), h, '#a68b56');
+  for (let sy = feetY - h + 8; sy < feetY; sy += 12) pxRect(m, x, sy, w, 1, '#b39a63');
+  if (frac >= 1) {
+    pxRect(m, x - 2, feetY - h - 4, w + 4, 5, '#d3ba84');       // capital
+    pxRect(m, x - 2, feetY - h - 4, w + 4, 1, '#e8d49c');
+  } else {
+    for (let bx = 0; bx < w; bx += 3) {                          // broken crown
+      pxRect(m, x + bx, feetY - h - 1 - (bx * 7) % 4, 3, 3, '#b39a63');
+    }
+  }
+}
+
+/** The desert floor, from the horizon down to the fighters' paving. */
+function plain(f) {
+  for (let y = HORIZON; y < PGROUND; y++) {
+    const t = D.scale(y);
+    pxRect(f, 0, y, PW, 1, mixCol('#ddd2ae', '#dfc086', Math.min(1, t * 1.3)));
+  }
+  // dune crests, packed toward the horizon
+  const rand = rng(515);
+  for (const s of [0.10, 0.17, 0.27, 0.40, 0.57, 0.78]) {
+    const y = Math.round(HORIZON + s * (PGROUND - HORIZON));
+    let x = -20 + rand() * 30;
+    while (x < PW) {
+      const len = (26 + rand() * 60) * (0.4 + s);
+      pxRect(f, x, y + Math.round(rand() * 3) - 1, len, 1, 'rgba(120, 90, 44, 0.30)');
+      pxRect(f, x + 3, y + Math.round(rand() * 3) - 2, len * 0.5, 1, 'rgba(255, 240, 200, 0.32)');
+      x += len + 14 + rand() * 40;
+    }
+  }
+  // the dig: a shallow trench cut into the plain, spoil heaped beside it
+  pxRect(f, 196, 196, 110, 8, '#a8834f');
+  pxRect(f, 196, 196, 110, 3, '#7d5f36');
+  pxEllipse(f, 316, 198, 16, 5, '#cba669');
+  pxEllipse(f, 313, 196, 10, 3, '#e8d0a0');
+  for (const kx of [200, 234, 268, 300]) {                       // survey stakes
+    pxRect(f, kx, 188, 2, 9, '#6d4a2c');
+    pxDot(f, kx + 1, 197, '#7d5f36');
+    if (kx < 300) {                                              // sagging line
+      pxLine(f, kx + 1, 189, kx + 18, 192, 1, '#b89a6a');
+      pxLine(f, kx + 18, 192, kx + 35, 189, 1, '#b89a6a');
+    }
+  }
+}
+
 export function paint(c) {
-  ditherGradient(c, 0, 0, PW, PGROUND, ['#2f7fb8', '#5fa8ce', '#9ccadc', '#d8cfa4', '#ecc98a']);
+  ditherGradient(c, 0, 0, PW, HORIZON + 2, ['#2f7fb8', '#5fa8ce', '#9ccadc', '#cfe0ec']);
   glow(c, 372, 44, 60, '255, 240, 184', 5, 0.07);
   pxCircle(c, 372, 44, 16, '#fff6d0');
   pxCircle(c, 372, 44, 11, '#ffffff');
 
-  /* ---- far: the pyramids, running off the top of the frame ---- */
+  /* ---- far: the plain, and the pyramids leaving the top of the frame ---- */
   c.drawImage(layer((f) => {
-    pyramid(f, 118, PGROUND - 24, 132, 172);
-    pyramid(f, 322, PGROUND - 18, 96, 116);
-    pyramid(f, 438, PGROUND - 14, 62, 70);
-    ditherBand(f, 0, PGROUND - 34, PW, 12, 'rgba(0,0,0,0)', '#e8d9a8', 0.4);   // heat haze
+    plain(f);
+    pyramid(f, 452, HORIZON + 2, 46, 0.55);
+    pyramid(f, 330, HORIZON + 3, 108, 0.3);
+    pyramid(f, 128, HORIZON + 4, 205, 0.12);
+    // heat shimmer where the sand meets the sky
+    ditherBand(f, 0, HORIZON, PW, 6, 'rgba(0,0,0,0)', '#e8d9a8', 0.4);
   }), 0, 0);
 
-  /* ---- mid: the colossus, the colonnade, the tents ---- */
-  c.drawImage(layer((m) => {
-    colossus(m, 66, PGROUND - 2, 170);
+  /* ---- mid: the colossus, the colonnade, the camp ---- */
+  const mid = layer((m) => {
+    /* the colossus: six metres of seated stone, its ground line a third of
+       the way up the plain -- far enough that the whole figure, face and
+       all, sits in the strip of frame the HUD leaves clear */
+    colossus(m, 88, 170, 138);
+    // sand drifted against the plinth, burying its own ground line
+    pxEllipse(m, 52, 171, 26, 4, '#dfc086');
+    pxEllipse(m, 124, 172, 30, 4, '#dfc086');
+    pxEllipse(m, 88, 173, 40, 4, '#d4b273');
 
-    // a run of columns crossing behind the fight, deliberately low contrast
-    for (let i = 0; i < 7; i++) {
-      const cx = 168 + i * 27;
-      const hh = 52 - (i % 3) * 6;
-      pxRect(m, cx, PGROUND - hh, 15, hh, '#c6ac74');
-      pxRect(m, cx, PGROUND - hh, 4, hh, '#dcc48a');
-      pxRect(m, cx + 11, PGROUND - hh, 4, hh, '#a68b56');
-      for (let s = 1; s < 5; s++) pxRect(m, cx, PGROUND - hh + s * 11, 15, 1, '#b39a63');
-      pxRect(m, cx - 2, PGROUND - hh - 5, 19, 5, '#d3ba84');
-      if (i < 5) pxRect(m, cx - 2, PGROUND - hh - 10, 46, 5, '#c0a670');    // lintel
-    }
+    // ruined colonnade crossing the middle distance
+    column(m, 262, 163, 1);
+    column(m, 306, 162, 0.62);
+    column(m, 350, 161, 1);
+    pxRect(m, 258, 163 - Math.round(8 * METRE * D.scale(163)) - 9, 110, 6, '#c0a670');
+    pxRect(m, 258, 163 - Math.round(8 * METRE * D.scale(163)) - 9, 110, 1, '#d8c088');
 
-    // caravan tents on the right
-    for (const [tx, tw, th] of [[392, 46, 52], [444, 38, 42]]) {
-      pxTri(m, tx - tw / 2, PGROUND, tx + tw / 2, PGROUND, tx, PGROUND - th, '#c85a3c');
-      pxTri(m, tx, PGROUND, tx + tw / 2, PGROUND, tx, PGROUND - th, '#96402a');
-      for (let s = 0; s < th; s += 8) {
-        pxRect(m, tx - (tw / 2) * (1 - s / th), PGROUND - s, tw * (1 - s / th), 2, '#e8c060');
+    // the camp: tents at the scale their ground line demands
+    for (const [tx, feetY] of [[412, 192], [462, 188]]) {
+      const s = D.scale(feetY);
+      const th = Math.round(2.6 * METRE * s), tw = Math.round(3.4 * METRE * s);
+      pxTri(m, tx - tw / 2, feetY, tx + tw / 2, feetY, tx, feetY - th, '#c85a3c');
+      pxTri(m, tx, feetY, tx + tw / 2, feetY, tx, feetY - th, '#96402a');
+      for (let sy = 0; sy < th; sy += 8) {
+        pxRect(m, tx - (tw / 2) * (1 - sy / th), feetY - sy, tw * (1 - sy / th), 2, '#e8c060');
       }
-      pxRect(m, tx - 6, PGROUND - 20, 12, 20, '#3a2a1c');
-      pxLine(m, tx, PGROUND - th, tx, PGROUND - th - 8, 1, '#6d4a2c');
-      pxTri(m, tx, PGROUND - th - 8, tx + 10, PGROUND - th - 5, tx, PGROUND - th - 2, '#e8c060');
+      pxRect(m, tx - Math.round(tw * 0.09), feetY - Math.round(th * 0.44),
+             Math.round(tw * 0.18), Math.round(th * 0.44), '#3a2a1c');
+      pxLine(m, tx, feetY - th, tx, feetY - th - 8, 1, '#6d4a2c');
+      pxTri(m, tx, feetY - th - 8, tx + 9, feetY - th - 5, tx, feetY - th - 2, '#e8c060');
     }
-  }), 0, 0);
+  });
+  {
+    // wash the whole middle distance toward the sand haze
+    const mc = mid.getContext('2d');
+    mc.globalCompositeOperation = 'source-atop';
+    mc.fillStyle = 'rgba(236, 214, 160, 0.14)';
+    mc.fillRect(0, 0, PW, PH);
+    mc.globalCompositeOperation = 'source-over';
+  }
+  c.drawImage(mid, 0, 0);
 
   paving(c, ['#e0c184', '#cba669', '#f0d5a2'], '#a8834f', 34);
 
-  /* ---- crowd: watching from the plinth and the tents ---- */
-  c.drawImage(crowd([
-    { x: 132, y: PGROUND - 16, h: 38, face: 1, pose: 'shoulder', load: 'sack' },
-    { x: 152, y: PGROUND - 14, h: 36, face: 1, pose: 'point', load: null },
-    { x: 366, y: PGROUND - 2, h: 46, face: -1, pose: 'crossed', load: null },
-    { x: 414, y: PGROUND - 2, h: 44, face: -1, pose: 'cheer', load: null },
-    { x: 266, y: PGROUND - 8, h: 32, face: -1, pose: 'talk' },
-    { x: 240, y: PGROUND - 8, h: 31, face: 1, pose: 'talk' },
-    { x: 218, y: PGROUND - 8, h: 31, face: 1, pose: 'carry', load: 'jug' },
-    { x: 460, y: PGROUND - 4, h: 42, face: -1, pose: 'sit', load: null, garb: 'robe' },
-  ], CROWD, { seed: 3121, haze: 'rgba(236, 214, 160, 0.20)' }), 0, 0);
+  /* ---- crowd: the dig crew, out on the plain ---- */
+  c.drawImage(crowd(PEOPLE, CROWD, { seed: 3121, haze: 'rgba(236, 214, 160, 0.22)' }), 0, 0);
 
   /* ---- near: fallen stone in the foreground corners ---- */
   c.drawImage(layer((n) => {
-    // toppled column, lying across the bottom left
-    for (let i = 0; i < 4; i++) {
-      pxEllipse(n, 16 + i * 19, PGROUND + 16, 10, 7, '#c6ac74');
-      pxEllipse(n, 13 + i * 19, PGROUND + 15, 6, 5, '#dcc48a');
-      pxRect(n, 8 + i * 19, PGROUND + 9, 17, 14, '#bda36b');
-      pxRect(n, 8 + i * 19, PGROUND + 9, 17, 2, '#dcc48a');
+    // toppled column drums, lying across the bottom left
+    for (const [dx, dy, r] of [[34, PGROUND + 24, 26], [92, PGROUND + 30, 24]]) {
+      pxRect(n, dx, dy - r, 54, r * 2, '#bda36b');
+      pxRect(n, dx, dy - r, 54, 5, '#dcc48a');
+      pxRect(n, dx, dy + r - 6, 54, 6, '#8f7549');
+      pxEllipse(n, dx + 54, dy, Math.round(r * 0.45), r, '#c6ac74');
+      pxEllipse(n, dx + 54, dy, Math.round(r * 0.28), Math.round(r * 0.62), '#a68b56');
+      pxEllipse(n, dx + 54, dy, Math.round(r * 0.1), Math.round(r * 0.24), '#8f7549');
+      for (let gx = dx + 8; gx < dx + 50; gx += 11) {           // flutes
+        pxRect(n, gx, dy - r + 5, 2, r * 2 - 11, '#a68b56');
+      }
     }
-    // broken blocks bottom right
-    crate(n, 424, PGROUND + 8, 26, 18, '#c6ac74', '#dcc48a', '#a68b56');
-    crate(n, 452, PGROUND + 14, 22, 14, '#bda36b', '#d3ba84', '#8f7549');
-    sack(n, 356, PGROUND - 18, 20, 18, '#c8a878', '#e2c79c', '#8f7549', '#8c3226');
-    basket(n, 380, PGROUND - 13, 22, 13, '#c8a05c', '#8a6a34', '#d84a3a', '#ff8a6a');
-    barrel(n, 468, PGROUND - 22, 16, 22, '#7a5230', '#9c6c42', '#4e3220', '#5b5b66');
+    pxEllipse(n, 60, PGROUND + 34, 70, 8, '#d4b273');           // sand piled round them
 
-    // dig-site markers and a standard planted in the sand
-    pxRect(n, 300, PGROUND - 58, 3, 58, '#6d4a2c');
-    banner(n, 288, PGROUND - 58, 16, 34, '#3f6f8c', '#e8c060', '#f6efdc');
-    signBoard(n, 148, PGROUND - 40, 34, 16, '#e8c060', '#8a4a1f', '#3b1f18', 2);
-    pxRect(n, 163, PGROUND - 24, 3, 24, '#6d4a2c');
+    // cut blocks and stores, bottom right
+    crate(n, 408, PGROUND - 6, 52, 40, '#c6ac74', '#dcc48a', '#a68b56');
+    crate(n, 444, PGROUND + 16, 44, 30, '#bda36b', '#d3ba84', '#8f7549');
+    glyphMark(n, 416, PGROUND + 2, 18, 16, '#8f7549', 4);       // carved face showing
+    sack(n, 372, PGROUND - 34, 34, 36, '#c8a878', '#e2c79c', '#8f7549', '#8c3226');
+    basket(n, 340, PGROUND - 26, 34, 26, '#c8a05c', '#8a6a34', '#d84a3a', '#ff8a6a');
 
-    palmTree(n, 348, PGROUND - 2, 54, '#7a5a34', '#4f8a3c', '#356028');
-    palmTree(n, 466, PGROUND - 2, 40, '#7a5a34', '#4f8a3c', '#356028');
+    /* a palm at the frame's right edge: at the fighters' scale a palm is
+       taller than the frame, so its crown hangs in at the very top and the
+       trunk runs the full height. Curved gently, ringed, thicker at the base. */
+    const trunkX = (y) => 448 + Math.round(Math.sin((y + 40) * 0.006) * 6) + Math.round(y * 0.02);
+    for (let y = -6; y < PGROUND + 30; y += 2) {
+      const tx = trunkX(y);
+      const w = 13 + Math.round((y / PH) * 5);
+      pxRect(n, tx, y, w, 2, '#7a5a34');
+      pxRect(n, tx, y, 4, 2, '#9c7846');
+      pxRect(n, tx + w - 3, y, 3, 2, '#5c4326');
+      if (y % 8 < 2) pxRect(n, tx - 1, y, w + 2, 1, '#5c4326');   // leaf-scar rings
+    }
+    // the crown, drooping into the frame from just above it
+    const cx0 = trunkX(-6) + 7;
+    for (const [dx, dy] of [[-1.9, 0.55], [-1.3, 0.3], [-0.6, 0.14], [0.7, 0.2], [1.5, 0.42], [2.1, 0.75]]) {
+      for (let i = 0; i < 20; i++) {
+        const px = cx0 + dx * i * 2.2;
+        const py = -8 + dy * i * 2.2 + i * i * 0.09;
+        pxRect(n, px, py, 5, 4, i > 11 ? '#356028' : '#4f8a3c');
+        if (i > 4 && i % 2) pxRect(n, px + 1, py + 3, 3, 2, '#356028');
+      }
+    }
+    // dates hanging under the crown
+    pxEllipse(n, cx0 - 8, 12, 5, 7, '#a8632c');
+    pxEllipse(n, cx0 - 10, 10, 3, 4, '#c87d3a');
   }), 0, 0);
 
   const rand = rng(991);

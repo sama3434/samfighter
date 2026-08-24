@@ -2,7 +2,11 @@ import { describe, it, expect } from './harness.js';
 import { PW, PH, PGROUND } from '../src/pixel/buffer.js';
 import { STAGES, DRIFT_COUNTS, seedDrifters, drawOverlay, stageCanvas } from '../src/stages/index.js';
 import { crowd, bystander, CROWD_POSES, CROWD_HEADS, CROWD_GARBS,
-         shade, mixCol } from '../src/stages/props.js';
+         shade, mixCol, makeDepth, person, FIGHTER_H, METRE } from '../src/stages/props.js';
+import { DEPTH as templeDepth, PEOPLE as templePeople } from '../src/stages/temple.js';
+import { DEPTH as pyramidsDepth, PEOPLE as pyramidsPeople } from '../src/stages/pyramids.js';
+import { DEPTH as cityDepth, PEOPLE as cityPeople } from '../src/stages/city.js';
+import { DEPTH as mountainDepth, PEOPLE as mountainPeople } from '../src/stages/mountain.js';
 
 const scratch = () => {
   const cv = document.createElement('canvas');
@@ -97,6 +101,90 @@ describe('crowd', () => {
     bystander(b.c, 240, PGROUND, 44, pal, { pose: 'point' }, 1);
     expect(painted(a.cv, 200, PGROUND - 50, 80, 52))
       .toBe(painted(b.cv, 200, PGROUND - 50, 80, 52));
+  });
+});
+
+describe('depth system', () => {
+  it('a figure standing on the fighters\' plane is fighter-sized', () => {
+    const d = makeDepth(130);
+    expect(d.size(PGROUND)).toBe(FIGHTER_H);
+    expect(d.size(PGROUND, 1.75)).toBe(FIGHTER_H);
+  });
+
+  it('shrinks toward the horizon and grows in front of the ground line', () => {
+    const d = makeDepth(130);
+    let prev = 0;
+    for (let y = 140; y <= PH; y += 5) {
+      const h = d.size(y);
+      if (h < prev) throw new Error(`size not monotonic at y=${y}`);
+      prev = h;
+    }
+    if (d.size(180) >= FIGHTER_H) throw new Error('mid-distance figure not smaller');
+    if (d.size(PH) <= FIGHTER_H) throw new Error('foreground figure not larger');
+  });
+
+  it('sizes real things off the same line: doors, storeys, counters', () => {
+    const d = makeDepth(130);
+    expect(d.size(PGROUND, 2.0)).toBe(128);           // a doorway
+    expect(d.size(PGROUND, 3.0)).toBe(192);           // one storey
+    expect(d.size(PGROUND, 0.9)).toBe(58);            // a counter, a barrel
+    expect(Math.round(METRE * 1.75)).toBe(FIGHTER_H);
+  });
+
+  it('feetFor inverts size, to within the pixel grid', () => {
+    const d = makeDepth(130);
+    for (const h of [30, 56, 80, 112]) {
+      const got = d.size(d.feetFor(h));
+      if (Math.abs(got - h) > 1) {
+        throw new Error(`feetFor(${h}) round-trips to ${got}`);
+      }
+    }
+  });
+
+  it('person() cannot disagree with its own ground line', () => {
+    const d = makeDepth(130);
+    for (const y of [160, 175, 200, PGROUND]) {
+      expect(person(d, 100, y).h).toBe(d.size(y));
+    }
+  });
+});
+
+describe('stage crowds obey the depth system', () => {
+  const manifests = [
+    ['temple', templeDepth, templePeople],
+    ['pyramids', pyramidsDepth, pyramidsPeople],
+    ['city', cityDepth, cityPeople],
+    ['mountain', mountainDepth, mountainPeople],
+  ];
+
+  it('every crowd figure is sized by where its feet meet the ground', () => {
+    for (const [key, depth, people] of manifests) {
+      for (const p of people) {
+        if (p.h !== depth.size(p.y)) {
+          throw new Error(`${key}: figure at (${p.x}, ${p.y}) is ${p.h}px, plane says ${depth.size(p.y)}`);
+        }
+      }
+    }
+  });
+
+  it('nobody on the fighters\' plane is dwarf-sized', () => {
+    for (const [key, , people] of manifests) {
+      for (const p of people) {
+        if (p.y >= PGROUND - 6 && (p.h < 100 || p.h > 118)) {
+          throw new Error(`${key}: near-plane figure at (${p.x}, ${p.y}) is ${p.h}px`);
+        }
+      }
+    }
+  });
+
+  it('every figure stands between the horizon and the frame edge', () => {
+    for (const [key, depth, people] of manifests) {
+      for (const p of people) {
+        if (p.y <= depth.horizonY + 10 || p.y > PH) {
+          throw new Error(`${key}: figure at (${p.x}, ${p.y}) has no ground to stand on`);
+        }
+      }
+    }
   });
 });
 

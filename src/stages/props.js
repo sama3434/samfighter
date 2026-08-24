@@ -47,6 +47,45 @@ export function block(c, x, y, w, h, base, hi, lo) {
   pxRect(c, x, y + h - 2, w, 2, lo);
 }
 
+/* ---------------- scale and depth ----------------
+
+   A fighter is 112 pixels for 1.75m of person, standing at PGROUND. Everything
+   else in a stage has to agree with that, or the fighters read as giants.
+
+   The rule that makes it systematic is the old painter's rule: for a viewer at
+   standing eye height, every standing figure's eye line sits on the horizon,
+   no matter how far away it is. So a stage picks its eye-level scanline once,
+   and from then on a thing is placed by where its feet meet the ground: the
+   further up the screen the feet, the further away the thing, and its size
+   falls out of the same line. Nothing is eyeballed, so nothing floats and
+   nothing is dwarf-sized on the fighters' own plane. */
+
+export const FIGHTER_H = 112;          // pixels per 1.75m of person at PGROUND
+export const METRE = FIGHTER_H / 1.75; // pixels per metre on the fighters' plane
+
+/** Perspective for one stage: `horizonY` is the eye-level scanline. */
+export function makeDepth(horizonY, { baseY = PGROUND } = {}) {
+  const scale = (feetY) => (feetY - horizonY) / (baseY - horizonY);
+  return {
+    horizonY,
+    baseY,
+    /** 0..1.. shrink factor for the plane whose ground line is `feetY`. */
+    scale,
+    /** Pixel height, at depth `feetY`, of a thing `metres` tall. */
+    size: (feetY, metres = 1.75) =>
+      Math.max(1, Math.round(metres * METRE * scale(feetY))),
+    /** The ground line where a drawn height h would be correct for `metres`. */
+    feetFor: (h, metres = 1.75) =>
+      Math.round(horizonY + (h / (metres * METRE)) * (baseY - horizonY)),
+  };
+}
+
+/** A person standing at `feetY`, sized by the stage's depth — the only way a
+    stage should place a crowd figure. Extra options pass through to crowd(). */
+export function person(depth, x, feetY, opts = {}) {
+  return { x, y: feetY, h: depth.size(feetY), ...opts };
+}
+
 /* ---------------- architecture ---------------- */
 
 /** Building front: storey bands, window openings, a ledge over each floor. */
@@ -306,7 +345,10 @@ export function bystander(c, x, baseY, h, pal, opts = 'stand', facing = 1) {
 
   const hipY = baseY - P(p.hip ?? 0.47);
   const shY = hipY - P(0.28);
-  const r = Math.max(2, Math.round(h * 0.10));
+  /* a reading-size head: at 30-50px a figure needs an oversized head to read
+     at all, but a near-fighter-sized figure with the same ratio goes
+     bobblehead, so the ratio tapers toward the fighters' own proportions */
+  const r = Math.max(2, Math.round(h * (0.10 - Math.max(0, h - 56) * 0.0004)));
   const chinY = shY - Math.max(1, P(0.025));
   const headY = chinY - r;
   const lean = (p.lean || 0) * f;
