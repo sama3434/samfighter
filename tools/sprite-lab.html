@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SAM FIGHTER — sprite lab</title>
+<style>
+  body { background: #171226; color: #cfc7e6; font: 12px/1.5 ui-monospace, Menlo, monospace;
+         margin: 0; padding: 16px; }
+  h1 { font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: #a89fc4; }
+  .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+  figure { margin: 0; text-align: center; }
+  figcaption { margin-top: 4px; color: #8a80ad; font-size: 11px; }
+  canvas { image-rendering: pixelated; background: #241c40; border: 1px solid #3d3160; }
+  .busy canvas { background:
+    repeating-linear-gradient(45deg, #3a2d55 0 6px, #2a2042 6px 12px); }
+  label { color: #8a80ad; margin-right: 12px; }
+</style>
+</head>
+<body>
+<h1>Sprite lab</h1>
+<p>
+  <label>zoom <input id="zoom" type="number" value="3" min="1" max="8" style="width:3em"></label>
+  <label><input id="busy" type="checkbox"> busy backdrop</label>
+  <label><input id="grid" type="checkbox"> pixel grid</label>
+</p>
+<div id="out"></div>
+
+<script type="module">
+import { SHEETS } from '../src/render/frames/index.js';
+import { baked, clearBakeCache } from '../src/render/frames/bake.js';
+import { CHARACTERS } from '../src/characters.js';
+import { paintBody, scratch } from '../src/render/sprite.js';
+
+const out = document.getElementById('out');
+const zoomEl = document.getElementById('zoom');
+const busyEl = document.getElementById('busy');
+const gridEl = document.getElementById('grid');
+
+/* Walk a sheet into a flat [label, frame] list, whatever shape it holds. */
+function listFrames(sheet) {
+  const list = [];
+  for (const [pose, entry] of Object.entries(sheet)) {
+    if (!entry) continue;
+    if (Array.isArray(entry)) entry.forEach((f, i) => list.push([`${pose} ${i}`, f]));
+    else if (entry.rows) list.push([pose, entry]);
+    else for (const [phase, f] of Object.entries(entry)) list.push([`${pose} ${phase}`, f]);
+  }
+  return list;
+}
+
+function tile(label, frame, palette, key) {
+  const z = Math.max(1, +zoomEl.value || 3);
+  const { canvas } = baked(key, frame, palette);
+  const fig = document.createElement('figure');
+  const cv = document.createElement('canvas');
+  cv.width = canvas.width * z;
+  cv.height = canvas.height * z;
+  const c = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  c.drawImage(canvas, 0, 0, cv.width, cv.height);
+  if (gridEl.checked && z >= 3) {
+    c.fillStyle = 'rgba(255,255,255,.09)';
+    for (let x = 0; x <= canvas.width; x += 4) c.fillRect(x * z, 0, 1, cv.height);
+    for (let y = 0; y <= canvas.height; y += 4) c.fillRect(0, y * z, cv.width, 1);
+  }
+  fig.appendChild(cv);
+  const cap = document.createElement('figcaption');
+  cap.textContent = `${label}  ${frame.rows[0].length}x${frame.rows.length}`;
+  fig.appendChild(cap);
+  return fig;
+}
+
+/* The procedural renderer, for scale and style comparison. */
+function procedural(character, slot, state = {}) {
+  const z = Math.max(1, +zoomEl.value || 3);
+  const f = {
+    character, slot, attack: null, ko: false, downTimer: 0, hitstun: 0,
+    onGround: true, blocking: false, crouching: false, stunTimer: 0,
+    vx: 0, vy: 0, walkPhase: 0, facing: 1, ...state,
+  };
+  paintBody(f, 0);
+  const fig = document.createElement('figure');
+  const cv = document.createElement('canvas');
+  cv.width = scratch.width * z;
+  cv.height = scratch.height * z;
+  const c = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  c.drawImage(scratch, 0, 0, cv.width, cv.height);
+  fig.appendChild(cv);
+  const cap = document.createElement('figcaption');
+  cap.textContent = 'procedural';
+  fig.appendChild(cap);
+  return fig;
+}
+
+const q = new URLSearchParams(location.search);
+const wantChar = q.get('char');
+const wantSlot = q.get('slot');
+const wantPose = q.get('pose');
+if (q.get('zoom')) zoomEl.value = q.get('zoom');
+
+function render() {
+  clearBakeCache();
+  out.innerHTML = '';
+  out.className = busyEl.checked ? 'busy' : '';
+  for (const ch of CHARACTERS) {
+    if (wantChar && ch.id !== wantChar) continue;
+    for (const slot of ['p1', 'p2']) {
+      if (wantSlot && slot !== wantSlot) continue;
+      const h = document.createElement('h1');
+      h.textContent = `${ch.name} — ${slot}`;
+      out.appendChild(h);
+      const row = document.createElement('div');
+      row.className = 'row';
+      const frames = listFrames(SHEETS[ch.id] || {})
+        .filter(([label]) => !wantPose || label.startsWith(wantPose));
+      for (const [label, frame] of frames) {
+        row.appendChild(tile(label, frame, ch.palettes[slot], `lab/${ch.id}/${slot}/${label}`));
+      }
+      if (slot === 'p1') row.appendChild(procedural(ch, slot));
+      out.appendChild(row);
+    }
+  }
+}
+
+for (const el of [zoomEl, busyEl, gridEl]) el.addEventListener('input', render);
+render();
+</script>
+</body>
+</html>

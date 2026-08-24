@@ -4,6 +4,8 @@ import { pxRect, pxTaper, pxCircle, pxEllipse, pxLine } from '../pixel/draw.js';
 import { applyOutline } from '../pixel/outline.js';
 import { OUTLINE } from './palettes.js';
 import { poseOf } from './poses.js';
+import { frameFor } from './frames/index.js';
+import { baked } from './frames/bake.js';
 
 /* A fighter is composed in this scratch buffer, given a silhouette keyline,
    and then blitted (mirrored if needed) into the scene. Sized to hold the
@@ -129,11 +131,27 @@ function torso(hx, hy, sx, sy, p, build) {
   line(hx - 5, hy - 5, hx - 10, hy - 22, 3, p.bandLo);
 }
 
+/* Hand-drawn frames are stamped where they exist; everything else still
+   comes off the procedural skeleton below. The two have to agree on scale --
+   both stand 112 buffer pixels of hurtbox tall with the soles on SPR_AY --
+   or a fighter would visibly grow the moment an undrawn pose came up. */
+function stampFrame(f, pose, frame) {
+  const hit = frameFor(f, pose, frame);
+  if (!hit) return false;
+  const p = f.character.palettes[f.slot];
+  const { canvas, ax, ay } = baked(hit.id, hit.frame, p);
+  sctx.drawImage(canvas, SPR_AX - ax, SPR_AY - ay);
+  return true;
+}
+
 export function paintBody(f, frame) {
   const p = f.character.palettes[f.slot];
   const build = f.character.build;
   const pose = poseOf(f, frame);
   sctx.clearRect(0, 0, SPR_W, SPR_H);
+
+  // the keyline is already baked into a hand-drawn frame's cached canvas
+  if (stampFrame(f, pose, frame)) return scratch;
 
   if (pose.kind === 'down') {
     const w = build.waist;

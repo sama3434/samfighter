@@ -86,7 +86,9 @@ src/
   audio.js          synthesized sound
   pixel/            buffer, primitives, dithering, outline, bitmap font
   render/           poses, fighter sprites, HUD, select screen, frame composition
+    frames/         hand-drawn sprite frames, one file per fighter
   stages/           one module per stage, plus shared props and the registry
+tools/              sprite lab, for looking at frames while drawing them
 tests/              browser test suite
 ```
 
@@ -112,13 +114,26 @@ dithering a whole gradient just produces uniform noise. Glows add a hash-based j
 the threshold, because a smooth radial falloff run through the bare Bayer matrix steps
 in visible squares.
 
-**Fighters** are drawn procedurally rather than from sprite sheets: a posed skeleton
-(`render/poses.js`) rendered as tapered limbs in three tones, then given a silhouette
-keyline. Every pose returns the same joints, so limb lengths stay consistent between
-animations and a new move needs only a pose branch. A character supplies the limb
-widths and hair style, so the roster is data rather than a second set of drawing code —
-and the select screen draws its portraits with the same function the match uses, so the
-art can never drift out of sync with what you actually get.
+**Fighters** are drawn from hand-authored frames (`render/frames/`) wherever one
+exists, and from a posed skeleton (`render/poses.js`) wherever one does not. A frame is
+a picture written as text — one string per pixel row, one character per pixel, each
+character naming a *material* rather than a colour, so the same picture renders in
+either player's palette and a mirror match still reads as blue against red. An anchor
+in the frame says where the soles meet the floor, which is what keeps a drawing lined
+up with a hurtbox it cannot see.
+
+The procedural renderer is still there and still used: tapered limbs in three tones,
+given a silhouette keyline. It covers knockdown, stunned and the spinning special,
+and it is the reason a half-finished sprite set never blocks anything — an undrawn
+pose falls back rather than failing. Both paths stand the same height on the same
+floor, and a test asserts it, because a fighter that grew by four pixels on one pose
+would be very hard to see and very easy to feel.
+
+Frames are baked once per palette into a canvas with the keyline already applied and
+blitted thereafter, so a fighter costs one `drawImage` a tick. The select screen draws
+its portraits with the same function the match uses, so the art can never drift out of
+sync with what you actually get. `tools/sprite-lab.html` shows every frame in both
+palettes beside the procedural figure.
 
 **Stages** are built the way the arcade ones were: a heavy block of shopfront on each
 side, a gap down the middle that recedes toward a landmark, clutter stacked at ground
@@ -153,7 +168,8 @@ The simulation modules never touch a canvas, which is what makes them testable.
 
 ## Ideas next
 
-- Hand-authored sprite sheets, for detail beyond what procedural drawing can reach
+- Hand-drawn frames for the poses still on the fallback: knockdown, stunned, the
+  spinning special
 - A second character with different frame data
 - Special moves on directional inputs (quarter-circle, charge)
 - Combo counter and juggle rules
