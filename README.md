@@ -3,7 +3,7 @@
 A local 1v1 pixel-art fighting game for the browser. Two players, one keyboard, no
 build step and no dependencies — plain HTML, CSS and canvas.
 
-Pick a fighter, then fight. Four stages rotate as the match goes on, each built around
+Pick a fighter, then fight. Five stages rotate as the match goes on, each built around
 a different shape rather than a shared template:
 
 | Stage | |
@@ -12,6 +12,7 @@ a different shape rather than a shared template:
 | **Pyramids** | An open dig site under monumental pyramids, low horizon, a seated colossus |
 | **City** | A rooftop at night, the skyline sitting *below* the parapet |
 | **Mountain** | A rope bridge strung over a gorge, sheer cliff on one side, open air on the other |
+| **Corsair** | A ship's weather deck under a squall, framed by its own rigging |
 
 ## Roster
 
@@ -135,16 +136,18 @@ its portraits with the same function the match uses, so the art can never drift 
 sync with what you actually get. `tools/sprite-lab.html` shows every frame in both
 palettes beside the procedural figure.
 
-**Stages** are built the way the arcade ones were: a heavy block of shopfront on each
-side, a gap down the middle that recedes toward a landmark, clutter stacked at ground
-level, and signage filling everything above head height. The band the fighters actually
-occupy is kept darker and calmer than the rest so the action still reads against it.
+**Stages** are dense the way the arcade ones were — clutter at ground level, detail
+filling everything above head height — but each is composed around its own shape rather
+than a shared template: an enclosed street, an open plain, an elevated rooftop, a bridge
+span, a ship's deck. The band the fighters actually occupy is kept darker and calmer
+than the rest so the action still reads against it.
 
 Scenery is drawn with the same construction as the fighters — three tones and a hard
 silhouette keyline — and each depth layer is outlined as a whole before being
 composited, so a row of shutters merges into one building mass while a lantern hanging
-in front of it does not. Background crowds use the same limb construction at about a
-third the height. Signage carries abstract marks rather than real writing in any
+in front of it does not. Background crowds are built by `crowd()`, which takes a per-stage wardrobe — poses,
+headgear, garments, carried loads — and rolls the rest deterministically, so a crowd
+does not read as one figure repeated. Signage carries abstract marks rather than real writing in any
 script: they give a painted sign its density and rhythm without pretending to spell
 something.
 
