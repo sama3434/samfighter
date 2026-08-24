@@ -36,7 +36,7 @@ describe('bitmap font', () => {
 
   it('covers every character the HUD can print', () => {
     const used = 'PLAYER 12 WINS THE MATCH ROUND FIGHT! K.O. TIME OVER DRAW ' +
-                 'PRESS ENTER FOR A REMATCH TEMPLE PYRAMIDS CITY MOUNTAIN 0123456789';
+                 'PRESS ENTER FOR A REMATCH TEMPLE PYRAMIDS CITY MOUNTAIN CORSAIR 0123456789';
     for (const ch of used.toUpperCase()) {
       if (!GLYPHS[ch]) throw new Error(`no glyph for "${ch}"`);
     }

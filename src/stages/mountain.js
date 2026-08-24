@@ -1,7 +1,7 @@
 import { PW, PH, PGROUND } from '../pixel/buffer.js';
 import { pxRect, pxLine, pxCircle, pxDot, pxTri, pxEllipse, pxTaper } from '../pixel/draw.js';
 import { ditherGradient, ditherBand } from '../pixel/dither.js';
-import { layer, glow, block, lantern, banner, crate, barrel, bystander } from './props.js';
+import { layer, glow, block, lantern, banner, crate, barrel, crowd } from './props.js';
 import { pineTree, starField, rng } from './scenery.js';
 
 /* A rope bridge over a gorge at sunrise.
@@ -14,11 +14,22 @@ import { pineTree, starField, rng } from './scenery.js';
 const PAL = {
   rock: '#6b6a86', rockHi: '#8e8dab', rockLo: '#454358',
   wood: '#6b4f3a', woodHi: '#8c6a4e', woodLo: '#3f2c1f',
-  crowd: [
-    { base: '#8c5a3c', hi: '#b57c58', lo: '#5c3826', belt: '#3d2418', shoe: '#2b1f16', skin: '#e8b487', skinHi: '#ffd6ab', hair: '#241d1a' },
-    { base: '#c8623c', hi: '#e88a64', lo: '#8a3a23', belt: '#5c2119', shoe: '#2b1f16', skin: '#f0c090', skinHi: '#ffdcb4', hair: '#2b1d16' },
-    { base: '#3f5a8c', hi: '#5f7fb8', lo: '#26375c', belt: '#1a2440', shoe: '#2b1f16', skin: '#d9a878', skinHi: '#f6cb9c', hair: '#1f1a14' },
-  ],
+};
+
+/* Cold-weather clothing: heavy layers, hoods and fur hats over dyed wool.
+   Washed toward the dawn haze that fills the gorge. */
+const CROWD = {
+  cloth: ['#8c5a3c', '#c8623c', '#3f5a8c', '#6b4a6b', '#5f6a4a', '#a8763a',
+          '#4a4f6b', '#8c3a3a', '#6b6154', '#3f6b6b'],
+  alt:   ['#5a4a3e', '#454a5e', '#6a5442', '#3e4450'],
+  trim:  ['#e8c060', '#f0e0c8', '#d8503c', '#4f8a3c'],
+  hats:  ['#d8503c', '#e8c060', '#3b2f28', '#f0e0c8', '#6b4a6b', '#8c5a3c'],
+  light: '#ffd9a0',
+  shoe:  '#2b1f16',
+  heads: ['hood', 'hood', 'wrap', 'cap', 'brim', 'bare', 'short', 'tail',
+          'long', 'bun'],
+  garbs: ['coat', 'coat', 'robe', 'tunic', 'vest'],
+  loads: [null, null, null, null, 'staff', 'sack', 'basket'],
 };
 
 const CLIFF_W = 132;
@@ -146,13 +157,14 @@ export function paint(c) {
   }), 0, 0);
 
   /* ---- crowd: watching from the cliff path and the far ledge ---- */
-  c.drawImage(layer((p) => {
-    bystander(p, 40, PGROUND + 14, 46, PAL.crowd[1], 'cheer', 1);
-    bystander(p, 88, PGROUND + 12, 44, PAL.crowd[0], 'crossed', 1);
-    bystander(p, 116, 52, 30, PAL.crowd[2], 'point', 1);      // up on the ledge
-    bystander(p, 452, PGROUND + 12, 45, PAL.crowd[2], 'stand', -1);
-    bystander(p, 424, PGROUND + 14, 43, PAL.crowd[1], 'lean', -1);
-  }), 0, 0);
+  c.drawImage(crowd([
+    { x: 40, y: PGROUND + 14, h: 46, face: 1, pose: 'cheer' },
+    { x: 88, y: PGROUND + 12, h: 44, face: 1, pose: 'crossed' },
+    { x: 116, y: 52, h: 30, face: 1, pose: 'point' },          // up on the ledge
+    { x: 452, y: PGROUND + 12, h: 45, face: -1, pose: 'wave' },
+    { x: 424, y: PGROUND + 14, h: 43, face: -1, pose: 'talk' },
+    { x: 66, y: PGROUND + 30, h: 50, face: 1, pose: 'sit', garb: 'coat' },
+  ], CROWD, { seed: 555, haze: 'rgba(208, 198, 232, 0.20)' }), 0, 0);
 
   /* ---- near: flags, lanterns, firewood ---- */
   c.drawImage(layer((n) => {

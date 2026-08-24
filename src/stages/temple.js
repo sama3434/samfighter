@@ -2,7 +2,7 @@ import { PW, PH, PGROUND } from '../pixel/buffer.js';
 import { pxRect, pxLine, pxCircle, pxDot, pxTri } from '../pixel/draw.js';
 import { ditherGradient, ditherDisc } from '../pixel/dither.js';
 import { layer, glow, block, facade, awning, lantern, signBoard, banner,
-         crate, barrel, basket, sack, hangingRow, bystander, paving, alleyDepth } from './props.js';
+         crate, barrel, basket, sack, hangingRow, crowd, paving, alleyDepth } from './props.js';
 import { pagodaRoof, rng } from './scenery.js';
 
 /* A market street at dusk, the shrine at the end of it.
@@ -17,11 +17,21 @@ const PAL = {
   wall: '#6b4a3c', wallHi: '#8a6450', wallLo: '#412a22',
   trim: '#a83a34', trimHi: '#c85a4e',
   far: '#5a4268', farLo: '#3d2c4f',
-  crowd: [
-    { base: '#4a5a8c', hi: '#6d7db0', lo: '#2e3a63', belt: '#26304f', shoe: '#231d33', skin: '#e8b487', skinHi: '#ffd6ab', hair: '#241d33' },
-    { base: '#7a4a6b', hi: '#a06d90', lo: '#4f2c46', belt: '#38203a', shoe: '#231d33', skin: '#f0c090', skinHi: '#ffdcb4', hair: '#3b2a1e' },
-    { base: '#3f7a5e', hi: '#5fa07e', lo: '#26503c', belt: '#1e3b2e', shoe: '#231d33', skin: '#d9a878', skinHi: '#f6cb9c', hair: '#1f1a2b' },
-  ],
+};
+
+/* The wardrobe the street's crowd is drawn from: dusk-muted cloth, a warm
+   key light off the stalls, and the headgear a market at closing time would
+   actually have in it. */
+const CROWD = {
+  cloth: ['#4a5a8c', '#7a4a6b', '#3f7a5e', '#8c6a3a', '#5c4a7a', '#8a4438',
+          '#3f6f8c', '#6b6154', '#a8763a', '#42546b'],
+  alt:   ['#4a4458', '#5c4d3a', '#3e4762', '#6a5442', '#414f5c'],
+  trim:  ['#e8c060', '#f0e0c8', '#c8443a', '#2f7a5e', '#d8cbb0'],
+  hats:  ['#c8443a', '#e8c060', '#3b2f28', '#d8cbb0', '#2f5f9c', '#8a6a3a'],
+  light: '#ffbf7a',
+  shoe:  '#231d33',
+  heads: ['bare', 'short', 'short', 'long', 'tail', 'bun', 'cone', 'wrap',
+          'brim', 'cap', 'hood', 'bald'],
 };
 
 const LEFT_W = 152;
@@ -65,10 +75,10 @@ export function paint(c) {
   paving(c, ['#8a7f6c', '#6e6455', '#b0a48c'], '#453e33', 26);
 
   /* ---- vendors, drawn before the counters so the counters hide their legs ---- */
-  c.drawImage(layer((p) => {
-    bystander(p, 60, PGROUND - 2, 50, PAL.crowd[2], 'stand', 1);
-    bystander(p, 396, PGROUND - 2, 50, PAL.crowd[1], 'lean', -1);
-  }), 0, 0);
+  c.drawImage(crowd([
+    { x: 60, y: PGROUND - 2, h: 50, pose: 'talk', face: 1, garb: 'apron', head: 'wrap', load: null },
+    { x: 396, y: PGROUND - 2, h: 50, pose: 'lean', face: -1, garb: 'vest', head: 'cap', load: null },
+  ], CROWD, { seed: 12, haze: 'rgba(46,24,52,0.16)' }), 0, 0);
 
   /* ---- mid: the two shopfronts framing the street ---- */
   c.drawImage(layer((m) => {
@@ -97,16 +107,18 @@ export function paint(c) {
   }), 0, 0);
 
   /* ---- crowd: the street has people in it ---- */
-  c.drawImage(layer((p) => {
+  c.drawImage(crowd([
     // far, small, in the depth of the street
-    bystander(p, 206, PGROUND - 12, 30, PAL.crowd[0], 'stand', 1);
-    bystander(p, 224, PGROUND - 10, 32, PAL.crowd[2], 'lean', -1);
-    bystander(p, 268, PGROUND - 11, 31, PAL.crowd[1], 'stand', -1);
+    { x: 206, y: PGROUND - 12, h: 30, face: 1, pose: 'talk' },
+    { x: 224, y: PGROUND - 10, h: 32, face: -1, pose: 'stand' },
+    { x: 268, y: PGROUND - 11, h: 31, face: -1, pose: 'carry', load: 'sack' },
+    { x: 246, y: PGROUND - 13, h: 28, face: 1, pose: 'stand', load: 'basket' },
     // mid depth, flanking the fight
-    bystander(p, 166, PGROUND - 2, 44, PAL.crowd[1], 'crossed', 1);
-    bystander(p, 314, PGROUND - 2, 45, PAL.crowd[0], 'point', -1);
-    bystander(p, 440, PGROUND - 2, 48, PAL.crowd[0], 'cheer', -1);
-  }), 0, 0);
+    { x: 166, y: PGROUND - 2, h: 44, face: 1, pose: 'crossed' },
+    { x: 314, y: PGROUND - 2, h: 45, face: -1, pose: 'point' },
+    { x: 440, y: PGROUND - 2, h: 48, face: -1, pose: 'cheer' },
+    { x: 464, y: PGROUND - 4, h: 42, face: -1, pose: 'wave' },
+  ], CROWD, { seed: 771, haze: 'rgba(46,24,52,0.22)' }), 0, 0);
 
   /* ---- near: everything hanging, stacked and leaning ---- */
   c.drawImage(layer((n) => {

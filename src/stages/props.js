@@ -1,8 +1,9 @@
 import { PW, PH, PGROUND } from '../pixel/buffer.js';
-import { pxRect, pxDot, pxLine, pxTri, pxCircle, pxEllipse, pxTaper } from '../pixel/draw.js';
+import { pxRect, pxDot, pxLine, pxTri, pxCircle, pxEllipse, pxTaper, hexToRgb } from '../pixel/draw.js';
 import { ditherDisc } from '../pixel/dither.js';
 import { applyOutline } from '../pixel/outline.js';
 import { OUTLINE } from '../render/palettes.js';
+import { rng } from './scenery.js';
 
 /* Stage props, built to sit next to the fighters without looking like a
    different game.
@@ -211,49 +212,348 @@ export function hangingRow(c, x, y, count, gap, len, base, hi, hook) {
 
 /* ---------------- people ---------------- */
 
-/* Bystanders use the same construction as the fighters -- three tones, hard
-   keyline from the layer pass -- at about a third the height, so the crowd
-   belongs to the same world without competing with the action. */
+/** Multiply a hex colour toward black. */
+export function shade(hex, f) {
+  const [r, g, b] = hexToRgb(hex);
+  const k = (v) => Math.max(0, Math.min(255, Math.round(v * f)));
+  return `#${((1 << 24) | (k(r) << 16) | (k(g) << 8) | k(b)).toString(16).slice(1)}`;
+}
+
+/** Blend two hex colours. t = 0 is all of a, t = 1 is all of b. */
+export function mixCol(a, b, t) {
+  const A = hexToRgb(a), B = hexToRgb(b);
+  const k = (i) => Math.max(0, Math.min(255, Math.round(A[i] + (B[i] - A[i]) * t)));
+  return `#${((1 << 24) | (k(0) << 16) | (k(1) << 8) | k(2)).toString(16).slice(1)}`;
+}
+
+/* Bystanders are built the way the fighters are -- three tones plus the hard
+   keyline the layer pass adds -- at 28 to 50 pixels tall.
+
+   At that size anatomy is not what carries the read: the eye picks up the
+   silhouette and the two or three largest colour areas, and nothing else. So
+   the variety lives in headgear, hemlines, posture and what someone is
+   carrying rather than in face detail, and a stage supplies a *wardrobe*
+   -- the cloth, skin and hair the crowd is drawn from -- instead of three
+   near-identical palettes. Every figure is deliberately flatter and lower in
+   contrast than a fighter, and `crowd()` washes the whole layer with the
+   stage's air colour so the crowd sits behind the action rather than beside
+   it. */
+
+const SKINS = [
+  ['#e8b487', '#ffd6ab'], ['#d69c6c', '#f2bf90'], ['#b57c4e', '#d6a074'],
+  ['#8c5a36', '#ad7952'], ['#5e3c26', '#7d5338'],
+];
+const HAIRS = ['#241d1a', '#3b2a1e', '#1f1a2b', '#5a4028', '#8a8279', '#2b1d16'];
+const HEADS = ['bare', 'bare', 'short', 'short', 'long', 'tail', 'bun',
+               'cap', 'brim', 'cone', 'wrap', 'hood', 'bald'];
+const GARBS = ['tunic', 'tunic', 'tunic', 'robe', 'coat', 'vest', 'apron'];
+const LOADS = [null, null, null, null, null, null, 'sack', 'basket', 'jug', 'staff'];
+const POSE_NAMES = ['stand', 'crossed', 'hips', 'lean', 'point', 'cheer', 'wave',
+                    'clap', 'talk', 'carry', 'shoulder', 'sit', 'kneel', 'behind'];
+
+/* Arm and leg entries are [elbowDX, elbowDY, handDX, handDY] as fractions of
+   the figure's height, measured from the shoulder (arms) or the hip (legs).
+   DX runs in the direction the figure faces, DY runs down the screen, so a
+   raised hand is simply a negative offset. `hip` moves the whole pelvis down
+   for the seated and kneeling poses; everything above it follows. */
 const POSES = {
-  stand:  { arms: [[4, -8], [-4, -8]], lean: 0 },
-  crossed:{ arms: [[3, -12], [-3, -12]], lean: 0 },
-  lean:   { arms: [[5, -6], [-2, -10]], lean: 2 },
-  point:  { arms: [[9, -14], [-3, -8]], lean: 1 },
-  cheer:  { arms: [[6, -20], [-6, -20]], lean: 0 },
+  stand:    { lean: 0,  legs: 'even',   arms: [[0.09, 0.14, 0.11, 0.30], [-0.09, 0.14, -0.12, 0.30]] },
+  crossed:  { lean: 0,  legs: 'apart',  arms: [[0.14, 0.11, -0.01, 0.18], [-0.13, 0.11, 0.03, 0.21]] },
+  hips:     { lean: 0,  legs: 'apart',  arms: [[0.17, 0.13, 0.08, 0.27], [-0.17, 0.13, -0.08, 0.27]] },
+  lean:     { lean: 3,  legs: 'cross',  arms: [[0.13, 0.16, 0.22, 0.28], [-0.10, 0.15, -0.12, 0.30]] },
+  point:    { lean: 1,  legs: 'stride', arms: [[0.17, 0.03, 0.35, -0.05], [-0.10, 0.15, -0.12, 0.30]] },
+  cheer:    { lean: 0,  legs: 'apart',  arms: [[0.11, -0.01, 0.15, -0.22], [-0.11, -0.01, -0.15, -0.22]] },
+  wave:     { lean: 0,  legs: 'even',   arms: [[0.13, 0.02, 0.17, -0.19], [-0.10, 0.15, -0.12, 0.30]] },
+  clap:     { lean: 1,  legs: 'even',   arms: [[0.16, 0.09, 0.05, 0.12], [-0.14, 0.09, 0.03, 0.14]] },
+  talk:     { lean: 1,  legs: 'stride', arms: [[0.15, 0.12, 0.21, 0.03], [-0.11, 0.16, -0.10, 0.27]] },
+  carry:    { lean: -1, legs: 'stride', arms: [[0.14, 0.12, 0.16, 0.23], [-0.11, 0.13, 0.10, 0.24]] },
+  shoulder: { lean: -2, legs: 'stride', arms: [[0.11, 0.01, 0.05, -0.11], [-0.11, 0.15, -0.13, 0.28]] },
+  sit:      { lean: 2,  legs: 'sit',   hip: 0.30, arms: [[0.12, 0.12, 0.18, 0.22], [-0.11, 0.13, -0.13, 0.24]] },
+  kneel:    { lean: 3,  legs: 'kneel', hip: 0.27, arms: [[0.11, 0.13, 0.18, 0.23], [-0.08, 0.14, -0.07, 0.25]] },
+  behind:   { lean: -1, legs: 'even',   arms: [[-0.06, 0.16, -0.10, 0.26], [-0.08, 0.16, -0.12, 0.27]] },
 };
 
-export function bystander(c, x, baseY, h, pal, pose = 'stand', facing = 1) {
-  const p = POSES[pose] || POSES.stand;
-  const headR = Math.max(3, Math.round(h * 0.13));
-  const hip = baseY - Math.round(h * 0.45);
-  const shoulder = baseY - Math.round(h * 0.74);
-  const headY = baseY - Math.round(h * 0.86);
-  const lean = p.lean * facing;
+const LEGS = {
+  even:   [[0.03, 0.26, 0.05, 0.47], [-0.03, 0.26, -0.07, 0.47]],
+  apart:  [[0.05, 0.26, 0.10, 0.47], [-0.05, 0.26, -0.10, 0.47]],
+  stride: [[0.07, 0.24, 0.13, 0.47], [-0.05, 0.26, -0.12, 0.47]],
+  cross:  [[0.03, 0.26, 0.10, 0.47], [-0.01, 0.27, 0.04, 0.47]],
+  sit:    [[0.17, 0.02, 0.18, 0.30], [0.12, 0.03, 0.11, 0.30]],
+  kneel:  [[0.15, 0.04, 0.16, 0.27], [-0.03, 0.26, -0.16, 0.24]],
+};
 
-  // legs
-  pxTaper(c, x - 2, hip, x - 3, baseY, 5, 4, pal.lo);
-  pxTaper(c, x + 2, hip, x + 3, baseY, 5, 4, pal.base);
-  pxRect(c, x - 5, baseY - 2, 5, 3, pal.shoe);
-  pxRect(c, x + 1, baseY - 2, 5, 3, pal.shoe);
+export const CROWD_POSES = POSE_NAMES;
+export const CROWD_HEADS = HEADS;
+export const CROWD_GARBS = GARBS;
 
-  // torso
-  pxTaper(c, x, hip, x + lean, shoulder, 10, 12, pal.base);
-  pxTaper(c, x - 2, hip, x - 2 + lean, shoulder, 4, 5, pal.hi);
-  pxRect(c, x - 5, hip - 1, 10, 2, pal.belt);
+/* One figure. `opts` is either a pose name or
+   { pose, head, garb, load, loadCol } -- anything left out falls back to a
+   plain standing figure in a tunic, which is what the old three-argument
+   call sites used to get. */
+export function bystander(c, x, baseY, h, pal, opts = 'stand', facing = 1) {
+  const o = typeof opts === 'string' ? { pose: opts } : (opts || {});
+  const p = POSES[o.pose] || POSES.stand;
+  const legs = LEGS[p.legs] || LEGS.even;
+  const f = facing < 0 ? -1 : 1;
+  const P = (v) => Math.round(v * h);
+  const R = Math.round;
 
-  // arms: dy is negative for a raised hand, so it is simply an offset
-  for (const [dx, dy] of p.arms) {
-    const hx = x + lean + dx * facing;
-    const hy = shoulder + 3 + dy;
-    pxTaper(c, x + lean, shoulder + 2, hx, hy, 5, 3, pal.lo);
-    pxCircle(c, hx, hy, 2, pal.skin);
+  const alt = pal.alt || shade(pal.base, 0.58);
+  const altLo = pal.altLo || shade(alt, 0.72);
+  const trim = pal.trim || mixCol(pal.base, '#ffffff', 0.38);
+  const hatCol = pal.hat || trim;
+  const hatLo = pal.hatLo || shade(hatCol, 0.66);
+
+  const hipY = baseY - P(p.hip ?? 0.47);
+  const shY = hipY - P(0.28);
+  const r = Math.max(2, Math.round(h * 0.10));
+  const chinY = shY - Math.max(1, P(0.025));
+  const headY = chinY - r;
+  const lean = (p.lean || 0) * f;
+  const shX = R(x + lean);
+
+  const shW = Math.max(6, P(0.27));
+  const hipW = Math.max(4, P(0.175));
+  const legW = Math.max(2, P(0.105));
+  const armW = Math.max(2, P(0.08));
+  const garb = o.garb || 'tunic';
+
+  /* two-segment limbs: a single straight taper from shoulder to hand is
+     exactly what makes a small figure read as a stick assembly */
+  const arm = (a, col, side, key) => {
+    const ox = R(shX + side * f * shW * 0.32);
+    const ex = R(shX + a[0] * h * f), ey = R(shY + a[1] * h);
+    const hx = R(shX + a[2] * h * f), hy = R(shY + a[3] * h);
+    if (key) {   // the near arm hangs against the torso, so it needs an edge
+      pxTaper(c, ox, shY + 1, ex, ey, armW + 2, armW + 1, key);
+      pxTaper(c, ex, ey, hx, hy, armW + 1, armW, key);
+      pxCircle(c, hx, hy, Math.max(2, R(armW * 0.5) + 1), key);
+    }
+    pxTaper(c, ox, shY + 1, ex, ey, armW, Math.max(2, armW - 1), col);
+    pxTaper(c, ex, ey, hx, hy, Math.max(2, armW - 1), Math.max(1, armW - 1), col);
+    pxCircle(c, hx, hy, Math.max(1, R(armW * 0.5)), pal.skin);
+    return [hx, hy];
+  };
+  const leg = (l, col) => {
+    const kx = R(x + l[0] * h * f), ky = R(hipY + l[1] * h);
+    const fx = R(x + l[2] * h * f), fy = R(hipY + l[3] * h);
+    pxTaper(c, R(x), hipY, kx, ky, legW + 1, legW, col);
+    pxTaper(c, kx, ky, fx, fy, legW, Math.max(2, legW - 1), col);
+    pxRect(c, fx - (f > 0 ? Math.ceil(legW / 2) : legW), fy - 2, legW + 2, 3, pal.shoe);
+  };
+
+  arm(p.arms[1], pal.lo, -1);              // far arm, behind the body
+  leg(legs[1], altLo);
+  leg(legs[0], alt);
+
+  // torso, lit from the left so a row of figures shares one light
+  pxTaper(c, shX, shY, R(x), hipY, shW, hipW, garb === 'vest' ? pal.hi : pal.base);
+  pxTaper(c, shX - R(shW * 0.30), shY + 1, R(x) - R(hipW * 0.30), hipY,
+          Math.max(2, R(shW * 0.24)), Math.max(2, R(hipW * 0.24)),
+          garb === 'vest' ? mixCol(pal.hi, '#ffffff', 0.2) : pal.hi);
+  pxTaper(c, shX + R(shW * 0.36), shY + 2, R(x) + R(hipW * 0.36), hipY,
+          Math.max(1, R(shW * 0.16)), Math.max(1, R(hipW * 0.16)), pal.lo);
+
+  if (garb === 'robe' || garb === 'coat') {
+    const hemY = garb === 'robe' ? baseY - 2 : hipY + P(0.14);
+    const hemW = garb === 'robe' ? R(hipW * 1.8) : R(hipW * 1.55);
+    for (let yy = hipY; yy <= hemY; yy++) {
+      const t = (yy - hipY) / Math.max(1, hemY - hipY);
+      const w = R(hipW + (hemW - hipW) * t);
+      pxRect(c, R(x) - (w >> 1), yy, w, 1, pal.base);
+      pxRect(c, R(x) - (w >> 1), yy, Math.max(1, R(w * 0.3)), 1, pal.hi);
+      pxRect(c, R(x) + (w >> 1) - Math.max(1, R(w * 0.24)), yy, Math.max(1, R(w * 0.24)), 1, pal.lo);
+    }
+    pxRect(c, R(x) - (hemW >> 1), hemY, hemW, 1, pal.lo);
+    if (garb === 'coat') {                                   // front opening
+      pxRect(c, R(x) - 1, shY + 2, 2, hemY - shY - 2, pal.lo);
+      pxRect(c, shX - R(shW * 0.36), shY, R(shW * 0.34), 3, trim);
+      pxRect(c, shX + R(shW * 0.06), shY, R(shW * 0.34), 3, trim);
+    }
+  } else if (garb === 'vest') {
+    pxTaper(c, shX, shY + 1, R(x), hipY, R(shW * 0.64), R(hipW * 0.7), pal.base);
+    pxRect(c, R(x) - 1, shY + 2, 2, hipY - shY - 2, pal.lo);
+  } else if (garb === 'apron') {
+    const ay = shY + R((hipY - shY) * 0.42);
+    pxRect(c, R(x) - R(hipW * 0.46), ay, Math.max(3, R(hipW * 0.92)), hipY - ay + 3, trim);
+    pxRect(c, R(x) - R(hipW * 0.46), ay, Math.max(1, R(hipW * 0.28)), hipY - ay + 3, mixCol(trim, '#ffffff', 0.3));
   }
 
-  // head
-  pxCircle(c, x + lean, headY, headR, pal.skin);
-  pxCircle(c, x + lean - facing, headY - 1, headR - 1, pal.skinHi);
-  pxRect(c, x + lean - headR, headY - headR, headR * 2, Math.max(2, headR - 1), pal.hair);
-  pxDot(c, x + lean + facing * 2, headY, '#241d33');
+  if (garb !== 'robe' && garb !== 'coat') {
+    pxRect(c, R(x) - R(hipW * 0.62), hipY - 1, Math.max(3, R(hipW * 1.24)), 2, pal.belt);
+  } else {
+    pxRect(c, R(x) - R(hipW * 0.7), hipY - 1, Math.max(3, R(hipW * 1.4)), 2, trim);
+  }
+  pxRect(c, shX - R(shW * 0.28), shY, Math.max(2, R(shW * 0.56)), 1, trim);   // collar
+
+  arm(p.arms[0], mixCol(pal.base, pal.hi, 0.45), 1, pal.lo);                 // near arm
+
+  // neck and head
+  pxRect(c, shX + f - 1, chinY - 1, Math.max(2, R(r * 0.9)), shY - chinY + 2, shade(pal.skin, 0.74));
+  const hx = shX;
+  pxCircle(c, hx, headY, r, pal.skin);
+  pxCircle(c, hx - 1, headY - 1, Math.max(1, r - 1), pal.skinHi);
+
+  // ---- headgear: this is what actually separates one figure from the next
+  const head = o.head || 'bare';
+  const capRows = r <= 3 ? 2 : r - 1;
+  let crownY = headY - r;                      // top of whatever is on their head
+  const cap = (col, rows, grow = 0) => {
+    const rr = r + grow;
+    for (let dy = -rr; dy < -r + rows; dy++) {
+      const span = Math.floor(Math.sqrt(Math.max(0, rr * rr - dy * dy)) + 0.5);
+      if (span > 0) pxRect(c, hx - span, headY + dy, span * 2 + 1, 1, col);
+    }
+  };
+
+  if (head === 'bald') {
+    pxRect(c, hx - r + 1, headY - r, Math.max(2, r), 1, shade(pal.skin, 0.86));
+  } else if (head === 'cap' || head === 'brim' || head === 'cone' ||
+             head === 'wrap' || head === 'hood' || head === 'helm') {
+    cap(pal.hair, Math.max(1, capRows - 1));
+  } else {
+    cap(pal.hair, capRows);
+    for (let dy = -r + capRows; dy <= 0; dy++) {         // temples
+      const span = Math.floor(Math.sqrt(Math.max(0, r * r - dy * dy)) + 0.5);
+      pxDot(c, hx - span, headY + dy, pal.hair);
+      pxDot(c, hx + span, headY + dy, pal.hair);
+    }
+  }
+
+  if (head === 'long') {
+    pxRect(c, hx - r - 1, headY - 1, 2, r + 3, pal.hair);
+    pxRect(c, hx + r, headY - 1, 2, r + 3, pal.hair);
+  } else if (head === 'tail') {
+    pxTaper(c, hx - f * (r - 1), headY - 1, hx - f * (r + 2), headY + r + 2,
+            Math.max(2, r - 1), 2, pal.hair);
+  } else if (head === 'bun') {
+    crownY = headY - r - 2;
+    pxCircle(c, hx - f, headY - r - 1, Math.max(1, r - 2), pal.hair);
+  } else if (head === 'short') {
+    pxRect(c, hx - f * (r - 1) - (f > 0 ? 0 : 1), headY - r + capRows, 2, 2, pal.hair);
+  } else if (head === 'cap') {
+    cap(hatCol, capRows, 1);
+    crownY = headY - r - 1;
+    pxRect(c, f > 0 ? hx + r - 1 : hx - r - r, headY - r + capRows - 1, r + 1, 1, hatLo);
+  } else if (head === 'brim') {
+    const ch = Math.max(2, r - 1);
+    crownY = headY - r - ch;
+    pxRect(c, hx - r + 1, headY - r - ch, 2 * r - 1, ch + 1, hatCol);
+    pxRect(c, hx - r + 1, headY - r - 1, 2 * r - 1, 1, hatLo);
+    pxEllipse(c, hx, headY - r + 1, r + 3, 1, hatCol);
+    pxRect(c, hx - r - 3, headY - r + 2, 2 * r + 7, 1, hatLo);
+  } else if (head === 'cone') {
+    crownY = headY - r * 2 - 1;
+    pxTri(c, hx - r - 3, headY - r + 2, hx + r + 3, headY - r + 2, hx, headY - r * 2 - 1, hatCol);
+    pxTri(c, hx, headY - r + 2, hx + r + 3, headY - r + 2, hx, headY - r * 2 - 1, hatLo);
+    pxRect(c, hx - r - 3, headY - r + 2, 2 * r + 7, 1, hatLo);
+  } else if (head === 'wrap') {
+    crownY = headY - r - 1;
+    cap(hatCol, capRows + 1, 1);
+    pxRect(c, hx - r, headY - r + capRows, 2 * r + 1, 1, hatLo);
+    pxRect(c, hx - f * (r + 1), headY - r + capRows, 2, Math.max(2, r), hatCol);
+  } else if (head === 'helm') {
+    crownY = headY - r - 1;
+    cap(hatCol, capRows + 1, 1);
+    pxRect(c, hx - r - 1, headY - r + capRows, 2 * r + 3, 1, hatLo);
+    pxRect(c, hx + f - 1, headY - r + capRows, 1, Math.max(2, r), hatLo);   // nasal bar
+  } else if (head === 'hood') {
+    crownY = headY - r - 2;
+    pxEllipse(c, hx, headY, r + 2, r + 2, hatCol);
+    pxRect(c, hx - r - 2, headY + 1, 2 * r + 5, Math.max(2, r), hatCol);
+    pxRect(c, hx - r - 2, headY + r + 1, 2 * r + 5, 2, hatLo);
+    pxEllipse(c, hx + f, headY + 1, Math.max(2, r - 1), Math.max(2, r - 1), pal.skin);
+  }
+
+  // features, last, so a hood or a hat brim never buries them
+  const soft = shade(pal.skin, 0.74), ink = shade(pal.skin, 0.5);
+  if (r >= 3) {
+    if (r >= 4) pxRect(c, hx - r + 2, headY - 1, 2 * r - 3, 1, soft);   // brow ridge
+    pxDot(c, hx + f * 2, headY, ink);
+    pxDot(c, hx - f, headY, ink);
+    pxDot(c, hx + f * (r - 1), headY + 1, soft);                   // nose
+    pxRect(c, hx + (f > 0 ? 0 : -1), headY + 2, 2, 1, soft);       // mouth
+  } else {
+    pxDot(c, hx + f, headY, ink);
+  }
+
+  // ---- what they are carrying
+  const loadCol = o.loadCol || '#a8916a';
+  if (o.load === 'sack') {
+    const bx = R(shX - f * P(0.16)), by = shY + P(0.02);
+    const rx = Math.max(3, P(0.11)), ry = Math.max(3, P(0.10));
+    pxEllipse(c, bx, by, rx, ry, loadCol);
+    pxEllipse(c, bx - 1, by - 1, Math.max(2, P(0.06)), Math.max(2, P(0.05)), mixCol(loadCol, '#ffffff', 0.22));
+    pxRect(c, bx - 1, by - ry - 1, 3, 3, shade(loadCol, 0.6));
+  } else if (o.load === 'basket') {
+    const bw = Math.max(5, P(0.24)), bh = Math.max(3, P(0.10));
+    pxRect(c, hx - (bw >> 1), crownY - bh, bw, bh, loadCol);
+    pxRect(c, hx - (bw >> 1) - 1, crownY - bh, bw + 2, 2, shade(loadCol, 0.72));
+    pxRect(c, hx - (bw >> 1) + 1, crownY - bh - 2, bw - 2, 2, mixCol(loadCol, '#c8462e', 0.55));
+  } else if (o.load === 'jug') {
+    const jx = R(shX + f * P(0.17)), jy = shY + P(0.24);
+    pxEllipse(c, jx, jy, Math.max(2, P(0.07)), Math.max(3, P(0.09)), loadCol);
+    pxRect(c, jx - 1, jy - Math.max(3, P(0.09)) - 2, 3, 3, shade(loadCol, 0.7));
+  } else if (o.load === 'staff') {
+    pxRect(c, R(shX + f * P(0.16)), R(shY - h * 0.20), 2, R(h * 0.64), '#6b4f34');
+    pxRect(c, R(shX + f * P(0.16)) - 1, R(shY - h * 0.20), 4, 2, '#8c6a48');
+  }
+}
+
+/* A crowd, laid out as one depth layer.
+
+   `people` is a list of placements; anything a placement leaves out is rolled
+   deterministically from the wardrobe, so a stage says "six people, these
+   clothes, this air" and gets a crowd rather than the same figure repeated.
+   Sorted back to front before drawing so overlaps stack correctly, and washed
+   with the stage's air colour afterwards -- that single flat pass is what
+   keeps the crowd behind the fighters instead of level with them. */
+export function crowd(people, wardrobe = {}, opts = {}) {
+  const rand = rng(opts.seed ?? 1234);
+  const wd = wardrobe;
+  const pick = (list) => list[Math.floor(rand() * list.length) % list.length];
+
+  const built = people.map((raw) => {
+    const p = Array.isArray(raw)
+      ? { x: raw[0], y: raw[1], h: raw[2], pose: raw[3], face: raw[4] }
+      : { ...raw };
+    const cloth = p.cloth || pick(wd.cloth || ['#7a6a58']);
+    const alt = pick(wd.alt || wd.cloth || ['#4c4034']);
+    const [skin, skinHi] = pick(wd.skin || SKINS);
+    const hatCol = pick(wd.hats || wd.trim || wd.cloth || ['#8a7a5c']);
+    p.pal = p.pal || {
+      base: cloth,
+      hi: mixCol(cloth, wd.light || '#ffe6c0', 0.26),
+      lo: shade(cloth, 0.58),
+      alt, altLo: shade(alt, 0.72),
+      trim: pick(wd.trim || [mixCol(cloth, '#ffffff', 0.4)]),
+      belt: shade(alt, 0.5),
+      shoe: wd.shoe || '#2b2118',
+      skin, skinHi,
+      hair: pick(wd.hair || HAIRS),
+      hat: hatCol, hatLo: shade(hatCol, 0.66),
+    };
+    p.pose = p.pose || pick(wd.poses || POSE_NAMES);
+    p.head = p.head || pick(wd.heads || HEADS);
+    p.garb = p.garb || pick(wd.garbs || GARBS);
+    p.load = p.load === undefined ? pick(wd.loads || LOADS) : p.load;
+    p.face = p.face ?? (rand() > 0.5 ? 1 : -1);
+    return p;
+  });
+  built.sort((a, b) => (a.y - b.y) || (a.h - b.h));
+
+  const cv = layer((c) => {
+    for (const p of built) bystander(c, p.x, p.y, p.h, p.pal, p, p.face);
+  }, opts.outline);
+
+  if (opts.haze) {
+    const c = cv.getContext('2d');
+    c.globalCompositeOperation = 'source-atop';
+    c.fillStyle = opts.haze;
+    c.fillRect(0, 0, PW, PH);
+    c.globalCompositeOperation = 'source-over';
+  }
+  return cv;
 }
 
 /* ---------------- ground ---------------- */
