@@ -11,16 +11,26 @@
 /* ---------------- stage geometry ---------------- */
 
 export const W = 960, H = 540;      // display canvas
-export const GROUND = 470;          // floor line (divides evenly by PSCALE)
-export const WALL = 40;             // playfield inset
+export const GROUND = 500;          // floor line (divides evenly by PSCALE)
+export const WALL = 50;             // playfield inset
 export const STEP = 1000 / 60;      // fixed simulation timestep, ms
 
-/* ---------------- movement ---------------- */
+/* ---------------- movement ----------------
 
-export const GRAVITY = 1.8;
-export const JUMP_V = -26;          // apex ~188, so the head clears the HUD
-export const MOVE_SPEED = 8.4;
-export const AIR_DRIFT = 0.9;
+   Everything spatial below was scaled x1.25 in the SVC-resolution pass
+   (fighters 112 -> 140 buffer px, the late-Neo-Geo proportion). Velocities
+   and accelerations scaled with the lengths, so timing and feel are
+   untouched -- see the note at the top of this file. */
+
+export const GRAVITY = 2.25;
+/* A pure x1.25 scale would be -32.5, but the discrete integrator overshoots
+   and the head would leave the frame at the apex (the buffer has no vertical
+   scroll). -31 keeps all but a few hair pixels on screen and shortens the
+   rise by roughly half a simulation frame -- the one deliberate deviation
+   from the uniform scale, chosen over clipping the fighter's head. */
+export const JUMP_V = -31;
+export const MOVE_SPEED = 10.5;
+export const AIR_DRIFT = 1.125;
 export const FRICTION = 0.72;
 export const BACKWALK = 0.72;       // walking away is slower than advancing
 
@@ -70,8 +80,8 @@ export const STUN_FRAMES = 42;      // 0.7s at 60Hz
 
 /* ---------------- fighter volumes ---------------- */
 
-export const BODY_W = 112;          // hurtbox width
-export const STAND_H = 224;         // hurtbox height, standing
-export const CROUCH_H = 152;        // hurtbox height, crouching
-export const DOWN_H = 88;           // hurtbox height, knocked down
-export const PUSH_GAP = BODY_W - 16;   // closest two fighters may stand
+export const BODY_W = 140;          // hurtbox width
+export const STAND_H = 280;         // hurtbox height, standing
+export const CROUCH_H = 190;        // hurtbox height, crouching
+export const DOWN_H = 110;          // hurtbox height, knocked down
+export const PUSH_GAP = BODY_W - 20;   // closest two fighters may stand

@@ -68,13 +68,13 @@ export class Fighter {
     if (m.both) {
       // reaches the same distance either way, so the box straddles the fighter
       return {
-        x: this.x - 28 - m.reach,
+        x: this.x - 35 - m.reach,
         y: this.y + m.top,
-        w: (28 + m.reach) * 2,
+        w: (35 + m.reach) * 2,
         h: m.h,
       };
     }
-    const front = this.facing > 0 ? this.x + 28 : this.x - 28 - m.reach;
+    const front = this.facing > 0 ? this.x + 35 : this.x - 35 - m.reach;
     return { x: front, y: this.y + m.top, w: m.reach, h: m.h };
   }
 
@@ -102,7 +102,7 @@ export class Fighter {
 
     if (this.canAct() && this.onGround) {
       const dx = opponent.x - this.x;
-      if (Math.abs(dx) > 6) this.facing = dx > 0 ? 1 : -1;
+      if (Math.abs(dx) > 7.5) this.facing = dx > 0 ? 1 : -1;
     }
 
     if (this.hitstun > 0) {
@@ -216,8 +216,8 @@ export class Fighter {
       this.ko = true;
       this.downTimer = 999;
       this.attack = null;
-      this.vx = fromDir * 10;
-      this.vy = -14;
+      this.vx = fromDir * 12.5;
+      this.vy = -17.5;
       this.onGround = false;
     }
   }
