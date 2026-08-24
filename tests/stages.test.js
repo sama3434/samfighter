@@ -126,15 +126,15 @@ describe('depth system', () => {
 
   it('sizes real things off the same line: doors, storeys, counters', () => {
     const d = makeDepth(130);
-    expect(d.size(PGROUND, 2.0)).toBe(128);           // a doorway
-    expect(d.size(PGROUND, 3.0)).toBe(192);           // one storey
-    expect(d.size(PGROUND, 0.9)).toBe(58);            // a counter, a barrel
+    expect(d.size(PGROUND, 2.0)).toBe(160);           // a doorway
+    expect(d.size(PGROUND, 3.0)).toBe(240);           // one storey
+    expect(d.size(PGROUND, 0.9)).toBe(72);            // a counter, a barrel
     expect(Math.round(METRE * 1.75)).toBe(FIGHTER_H);
   });
 
   it('feetFor inverts size, to within the pixel grid', () => {
     const d = makeDepth(130);
-    for (const h of [30, 56, 80, 112]) {
+    for (const h of [30, 56, 80, 140]) {
       const got = d.size(d.feetFor(h));
       if (Math.abs(got - h) > 1) {
         throw new Error(`feetFor(${h}) round-trips to ${got}`);
@@ -172,7 +172,7 @@ describe('stage crowds obey the depth system', () => {
   it('nobody on the fighters\' plane is dwarf-sized', () => {
     for (const [key, , people] of manifests) {
       for (const p of people) {
-        if (p.y >= PGROUND - 6 && (p.h < 100 || p.h > 118)) {
+        if (p.y >= PGROUND - 6 && (p.h < 125 || p.h > 148)) {
           throw new Error(`${key}: near-plane figure at (${p.x}, ${p.y}) is ${p.h}px`);
         }
       }

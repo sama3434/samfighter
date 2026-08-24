@@ -10,8 +10,8 @@ import { baked } from './frames/bake.js';
 /* A fighter is composed in this scratch buffer, given a silhouette keyline,
    and then blitted (mirrored if needed) into the scene. Sized to hold the
    longest reach -- a fully extended kick -- plus the knockdown sprawl. */
-const SPR_W = 168, SPR_H = 144;
-export const SPR_AX = 60, SPR_AY = 128;    // anchor: the fighter's feet
+const SPR_W = 216, SPR_H = 180;
+export const SPR_AX = 76, SPR_AY = 160;    // anchor: the fighter's feet
 
 export const scratch = document.createElement('canvas');
 scratch.width = SPR_W;
@@ -19,15 +19,23 @@ scratch.height = SPR_H;
 const sctx = scratch.getContext('2d');
 sctx.imageSmoothingEnabled = false;
 
-/* local (x forward, y up from feet) -> scratch canvas coords */
-const SX = (x) => SPR_AX + x;
-const SY = (y) => SPR_AY - y;
+/* local (x forward, y up from feet) -> scratch canvas coords.
 
-const rect = (x, y, w, h, col) => pxRect(sctx, SX(x), SY(y) - h, w, h, col);
-const circle = (x, y, r, col) => pxCircle(sctx, SX(x), SY(y), r, col);
-const line = (x0, y0, x1, y1, t, col) => pxLine(sctx, SX(x0), SY(y0), SX(x1), SY(y1), t, col);
+   The procedural skeleton in poses.js is still authored in its original
+   112px-fighter units; K stretches it to the 140px world at draw time, so
+   the fallback poses stay in step with the hand-drawn frames without every
+   joint constant being rewritten. */
+const K = 1.25;
+const SX = (x) => SPR_AX + Math.round(x * K);
+const SY = (y) => SPR_AY - Math.round(y * K);
+const SS = (v) => Math.round(v * K);
+
+const rect = (x, y, w, h, col) => pxRect(sctx, SX(x), SY(y) - SS(h), SS(w), SS(h), col);
+const circle = (x, y, r, col) => pxCircle(sctx, SX(x), SY(y), SS(r), col);
+const line = (x0, y0, x1, y1, t, col) =>
+  pxLine(sctx, SX(x0), SY(y0), SX(x1), SY(y1), Math.max(1, SS(t)), col);
 const taper = (x0, y0, x1, y1, w0, w1, col) =>
-  pxTaper(sctx, SX(x0), SY(y0), SX(x1), SY(y1), w0, w1, col);
+  pxTaper(sctx, SX(x0), SY(y0), SX(x1), SY(y1), SS(w0), SS(w1), col);
 
 /* A limb in three tones: the shadow tone is laid down at full width and the
    base and highlight are inset toward the light, which gives the roundness a
@@ -51,12 +59,12 @@ function foot(x, y, p, striking) {
 }
 
 function fist(x, y, p, big) {
-  const s = big ? 13 : 11;
+  const s = big ? 16 : 14;
   pxCircle(sctx, SX(x), SY(y), Math.floor(s / 2), p.gloveLo);
   pxCircle(sctx, SX(x) + 1, SY(y) - 1, Math.floor(s / 2) - 1, p.glove);
-  pxRect(sctx, SX(x) - 1, SY(y) - Math.floor(s / 2), 3, 2, p.gloveHi);
+  pxRect(sctx, SX(x) - 1, SY(y) - Math.floor(s / 2), 4, 2, p.gloveHi);
   // wrap tape at the wrist
-  pxRect(sctx, SX(x) - Math.floor(s / 2) - 1, SY(y) - 1, 3, 5, p.band);
+  pxRect(sctx, SX(x) - Math.floor(s / 2) - 1, SY(y) - 1, 4, 6, p.band);
 }
 
 function head(x, y, p, pose, build, frame) {
@@ -133,7 +141,7 @@ function torso(hx, hy, sx, sy, p, build) {
 
 /* Hand-drawn frames are stamped where they exist; everything else still
    comes off the procedural skeleton below. The two have to agree on scale --
-   both stand 112 buffer pixels of hurtbox tall with the soles on SPR_AY --
+   both stand 140 buffer pixels of hurtbox tall with the soles on SPR_AY --
    or a fighter would visibly grow the moment an undrawn pose came up. */
 function stampFrame(f, pose, frame) {
   const hit = frameFor(f, pose, frame);
@@ -239,9 +247,9 @@ export function drawFighter(f, frame) {
   const fy = wp(f.y);
 
   // contact shadow tightens as the fighter rises
-  const air = Math.max(0, Math.min(1, (GROUND - f.y) / 300));
-  const shW = Math.round(20 - air * 8);
-  pxEllipse(pctx, fx, PGROUND + 1, shW, 3, `rgba(13, 8, 18, ${0.42 - air * 0.24})`);
+  const air = Math.max(0, Math.min(1, (GROUND - f.y) / 375));
+  const shW = Math.round(25 - air * 10);
+  pxEllipse(pctx, fx, PGROUND + 1, shW, 4, `rgba(13, 8, 18, ${0.42 - air * 0.24})`);
 
   paintBody(f, frame);
 
@@ -257,11 +265,11 @@ export function drawFighter(f, frame) {
 
   // stunned: a ring of stars over the head, the way the arcade always did it
   if (f.stunTimer > 0) {
-    const cx = fx, cy = fy - 118;
+    const cx = fx, cy = fy - 148;
     for (let i = 0; i < 3; i++) {
       const a = frame * 0.16 + (i * Math.PI * 2) / 3;
-      const sx2 = Math.round(cx + Math.cos(a) * 14);
-      const sy2 = Math.round(cy + Math.sin(a) * 4);
+      const sx2 = Math.round(cx + Math.cos(a) * 18);
+      const sy2 = Math.round(cy + Math.sin(a) * 5);
       const col = i === 0 ? '#fff6c0' : '#ffd23f';
       pxRect(pctx, sx2 - 2, sy2, 5, 1, col);
       pxRect(pctx, sx2, sy2 - 2, 1, 5, col);
@@ -271,8 +279,8 @@ export function drawFighter(f, frame) {
 
   // guard spark: a couple of bright chips off the forearms
   if (f.blockFlash > 0 && f.blockFlash % 2 === 0) {
-    const gx = fx + f.facing * 14;
-    pxRect(pctx, gx, fy - 62, 3, 18, '#dff0ff');
-    pxRect(pctx, gx + f.facing * 4, fy - 56, 3, 10, '#8fc8ff');
+    const gx = fx + f.facing * 18;
+    pxRect(pctx, gx, fy - 78, 3, 22, '#dff0ff');
+    pxRect(pctx, gx + f.facing * 5, fy - 70, 3, 13, '#8fc8ff');
   }
 }

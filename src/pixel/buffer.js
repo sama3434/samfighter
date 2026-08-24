@@ -2,10 +2,11 @@
 
    480x270 is exactly half the 960x540 display canvas, so the upscale is a
    clean integer 2x with no resampling, and it leaves room for fighters about
-   112px tall -- roughly the proportion of the frame SF2 gave its cast. */
+   140px tall -- roughly half the frame, the proportion the late Neo Geo
+   fighters gave their cast. */
 
 export const PW = 480, PH = 270, PSCALE = 2;
-export const PGROUND = 235;          // GROUND / PSCALE
+export const PGROUND = 250;          // GROUND / PSCALE
 
 export const buffer = document.createElement('canvas');
 buffer.width = PW;

@@ -115,8 +115,8 @@ real modules.
 **The pixel pipeline.** Everything is drawn into a 480x270 buffer and then blown up 2x
 to the 960x540 canvas with smoothing off, so the pixel grid is real rather than a
 filter over vector art. 480x270 is exactly half the canvas in each direction, which
-keeps the upscale a clean integer and leaves room for fighters about 112px tall —
-roughly the proportion of the frame that SF2 gave its cast.
+keeps the upscale a clean integer and leaves room for fighters about 140px tall —
+roughly half the frame, the proportion the late Neo Geo fighters gave their cast.
 
 Sky gradients are flat colour bands with an ordered 4x4 Bayer dither only at the seams;
 dithering a whole gradient just produces uniform noise. Glows add a hash-based jitter to

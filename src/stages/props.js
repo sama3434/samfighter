@@ -49,7 +49,7 @@ export function block(c, x, y, w, h, base, hi, lo) {
 
 /* ---------------- scale and depth ----------------
 
-   A fighter is 112 pixels for 1.75m of person, standing at PGROUND. Everything
+   A fighter is 140 pixels for 1.75m of person, standing at PGROUND. Everything
    else in a stage has to agree with that, or the fighters read as giants.
 
    The rule that makes it systematic is the old painter's rule: for a viewer at
@@ -60,7 +60,7 @@ export function block(c, x, y, w, h, base, hi, lo) {
    falls out of the same line. Nothing is eyeballed, so nothing floats and
    nothing is dwarf-sized on the fighters' own plane. */
 
-export const FIGHTER_H = 112;          // pixels per 1.75m of person at PGROUND
+export const FIGHTER_H = 140;          // pixels per 1.75m of person at PGROUND
 export const METRE = FIGHTER_H / 1.75; // pixels per metre on the fighters' plane
 
 /** Perspective for one stage: `horizonY` is the eye-level scanline. */

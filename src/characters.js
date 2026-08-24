@@ -2,7 +2,13 @@
 
    Both fighters share the frame data in moves.js -- no special abilities yet.
    A character is a look: a build the sprite is drawn to, and one palette per
-   player slot so a mirror match still reads as blue versus red. */
+   player slot so a mirror match still reads as blue versus red.
+
+   Palettes are deep ramps in the late Neo Geo manner: each material runs from
+   a near-black core shadow (`*Lo2`) up to a bright specular (`*Hi2`), with
+   the darks hue-shifted cool rather than merely darker, and a shared `rim`
+   tone -- the cool bounce light painted along the shadow-side silhouette.
+   Builds are in buffer pixels and were scaled x1.25 with the world. */
 
 export const CHARACTERS = [
   {
@@ -10,25 +16,33 @@ export const CHARACTERS = [
     name: 'KAI',
     blurb: 'STRAIGHT ANSWERS',
     build: {
-      shoulder: 30, chest: 30, waist: 24,
-      arm: 13, leg: 17,
+      shoulder: 38, chest: 38, waist: 30,
+      arm: 16, leg: 21,
       hair: 'spiky',
       headband: true,
     },
     palettes: {
       p1: {
-        gi: '#3f7fd8', giHi: '#8fc0f8', giLo: '#22508f',
-        skin: '#f0c090', skinHi: '#ffdcb4', skinLo: '#c08a5c',
-        hair: '#241d33', hairHi: '#443a5c',
-        band: '#eae6f2', bandLo: '#a9a4bd',
-        glove: '#d9403c', gloveHi: '#ff7a6a', gloveLo: '#8f2320',
+        gi: '#3f7fd8', giHi: '#8fc0f8', giHi2: '#cfe8ff',
+        giLo: '#22508f', giLo2: '#132f5c',
+        skin: '#f0c090', skinHi: '#ffdcb4', skinHi2: '#fff2da',
+        skinLo: '#c08a5c', skinLo2: '#8a5a38',
+        hair: '#241d33', hairHi: '#443a5c', hairHi2: '#7a6aa0', hairLo: '#120e1e',
+        band: '#eae6f2', bandHi: '#ffffff', bandLo: '#a9a4bd',
+        glove: '#d9403c', gloveHi: '#ff7a6a', gloveHi2: '#ffb49e',
+        gloveLo: '#8f2320', gloveLo2: '#571114',
+        rim: '#8cc4e4',
       },
       p2: {
-        gi: '#e2504a', giHi: '#ff9b8c', giLo: '#93262a',
-        skin: '#f5cf9e', skinHi: '#ffe8c4', skinLo: '#c4926a',
-        hair: '#f0c95e', hairHi: '#fff0b0',
-        band: '#2c2436', bandLo: '#171223',
-        glove: '#2f2a44', gloveHi: '#5a5478', gloveLo: '#191426',
+        gi: '#e2504a', giHi: '#ff9b8c', giHi2: '#ffc9b8',
+        giLo: '#93262a', giLo2: '#571318',
+        skin: '#f5cf9e', skinHi: '#ffe8c4', skinHi2: '#fff4d8',
+        skinLo: '#c4926a', skinLo2: '#8e6242',
+        hair: '#f0c95e', hairHi: '#fff0b0', hairHi2: '#fffbe2', hairLo: '#b98a34',
+        band: '#2c2436', bandHi: '#4a3f5c', bandLo: '#171223',
+        glove: '#2f2a44', gloveHi: '#5a5478', gloveHi2: '#8a84b0',
+        gloveLo: '#191426', gloveLo2: '#0d0a18',
+        rim: '#8fa8d4',
       },
     },
   },
@@ -39,25 +53,33 @@ export const CHARACTERS = [
     build: {
       // close enough to KAI that neither reads as the smaller fighter;
       // the difference is silhouette, not scale
-      shoulder: 28, chest: 28, waist: 22,
-      arm: 12, leg: 16,
+      shoulder: 35, chest: 35, waist: 28,
+      arm: 15, leg: 20,
       hair: 'ponytail',
       headband: false,
     },
     palettes: {
       p1: {
-        gi: '#2fb0a8', giHi: '#7fe8dc', giLo: '#166b66',
-        skin: '#e8b487', skinHi: '#ffd6ab', skinLo: '#b8794f',
-        hair: '#2b1f38', hairHi: '#4d3c60',
-        band: '#f4e28a', bandLo: '#b8a04a',
-        glove: '#3a4a8f', gloveHi: '#7a8ad4', gloveLo: '#1e2a5c',
+        gi: '#2fb0a8', giHi: '#7fe8dc', giHi2: '#c8fff0',
+        giLo: '#166b66', giLo2: '#0b403e',
+        skin: '#e8b487', skinHi: '#ffd6ab', skinHi2: '#fff0d6',
+        skinLo: '#b8794f', skinLo2: '#845433',
+        hair: '#2b1f38', hairHi: '#4d3c60', hairHi2: '#7c66a0', hairLo: '#150e20',
+        band: '#f4e28a', bandHi: '#fff8c8', bandLo: '#b8a04a',
+        glove: '#3a4a8f', gloveHi: '#7a8ad4', gloveHi2: '#b0bcf0',
+        gloveLo: '#1e2a5c', gloveLo2: '#101838',
+        rim: '#92ccdc',
       },
       p2: {
-        gi: '#d9457a', giHi: '#ff8fb4', giLo: '#8c2148',
-        skin: '#f2c79a', skinHi: '#ffe2bc', skinLo: '#c08a5e',
-        hair: '#b8532a', hairHi: '#e88a4c',
-        band: '#2f2a3f', bandLo: '#1a1626',
-        glove: '#f0d060', gloveHi: '#fff0a8', gloveLo: '#a88a20',
+        gi: '#d9457a', giHi: '#ff8fb4', giHi2: '#ffd0e0',
+        giLo: '#8c2148', giLo2: '#521028',
+        skin: '#f2c79a', skinHi: '#ffe2bc', skinHi2: '#fff2d8',
+        skinLo: '#c08a5e', skinLo2: '#8a5c3a',
+        hair: '#b8532a', hairHi: '#e88a4c', hairHi2: '#ffc890', hairLo: '#752f18',
+        band: '#2f2a3f', bandHi: '#4c4560', bandLo: '#1a1626',
+        glove: '#f0d060', gloveHi: '#fff0a8', gloveHi2: '#fff8d0',
+        gloveLo: '#a88a20', gloveLo2: '#6a5410',
+        rim: '#96afd8',
       },
     },
   },

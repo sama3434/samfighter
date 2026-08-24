@@ -85,7 +85,7 @@ silhouette gets a keyline before it is composited:
 
 Three things to keep in mind:
 
-- Leave the band the fighters occupy (roughly y 120–235) darker and less busy than the
+- Leave the band the fighters occupy (roughly y 110–250) darker and less busy than the
   rest, or the action stops reading.
 - Use `glow()` rather than `ditherDisc()` for lamp and interior light — a jittered
   dither reads as scattered glitter over a dark interior.
@@ -174,8 +174,10 @@ const BLOCK = {
 ```
 
 Characters name a **material**, never a colour — see `frames/glyphs.js` for the
-alphabet (`o O q` gi, `s S x` skin, `h H` hair, `b B` belt and headband,
-`g G c` glove, `.` transparent). That is what lets one picture render in both
+alphabet (`A O o q Q` gi, `Z S s x z` skin, `D H h d` hair, `n b B` belt and
+headband, `v G g c C` glove, `r` rim light, `.` transparent -- each material
+runs from a bright specular down to a near-black core shadow, plus a shared
+cool rim tone for the bounce light on the shadow side). That is what lets one picture render in both
 players' palettes, which is what makes a mirror match legible.
 
 1. Draw the frame and add it to the sheet's export at the bottom of the file.
@@ -200,7 +202,7 @@ Three rules the tests enforce, because none of them fail loudly on their own:
   by the keyline pass and comes out as a black speck inside the figure.
 
 An attack's reach has to match `moves.js`: `reach` is in world units, and the
-buffer is half that, so a punch at `reach: 132` wants its fist about 66 pixels
+buffer is half that, so a punch at `reach: 165` wants its fist about 82 pixels
 in front of `ax`.
 
 ## Adding a move

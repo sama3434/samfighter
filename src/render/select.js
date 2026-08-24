@@ -9,7 +9,7 @@ import { paintBody, SPR_AX, SPR_AY, scratch } from './sprite.js';
    the same sprite code the match uses -- so whatever you pick is exactly what
    you get, and the roster can never drift out of sync with the art. */
 
-const CARD_W = 104, CARD_H = 140, CARD_TOP = 60;
+const CARD_W = 108, CARD_H = 158, CARD_TOP = 46;
 const FEET_Y = CARD_TOP + CARD_H - 6;      // portraits stand on the card floor
 const NAME_Y = CARD_TOP + CARD_H + 6;      // name and blurb sit below the card
 const BLURB_Y = NAME_Y + 17;
@@ -132,9 +132,9 @@ export function renderSelect(ctx, state, roster) {
 
   const title = 'SELECT YOUR FIGHTER';
   const tw = textWidth(title, 3);
-  pxRect(pctx, PW / 2 - tw / 2 - 8, 20, tw + 16, 30, '#160b1c');
-  pxRect(pctx, PW / 2 - tw / 2 - 6, 22, tw + 12, 26, '#2c1630');
-  drawText(pctx, title, PW / 2, 26, '#ffd23f', 3, 'center', '#7a2a1c');
+  pxRect(pctx, PW / 2 - tw / 2 - 8, 6, tw + 16, 30, '#160b1c');
+  pxRect(pctx, PW / 2 - tw / 2 - 6, 8, tw + 12, 26, '#2c1630');
+  drawText(pctx, title, PW / 2, 12, '#ffd23f', 3, 'center', '#7a2a1c');
 
   for (const [i, character] of roster.entries()) drawCard(character, i, roster.length, frame, state);
   drawFooter(state, roster);
