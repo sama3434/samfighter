@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fire fighter — concept</title>
+<style>
+  body { background:#0b0d14; color:#d9deec; margin:0; padding:20px;
+         font:13px ui-monospace, Menlo, monospace; }
+  canvas { image-rendering: pixelated; display:block; border:2px solid #2a3145; border-radius:8px; }
+</style>
+</head>
+<body>
+<canvas id="out" width="1280" height="960"></canvas>
+
+<script type="module">
+import { SHEETS } from '../src/render/frames/index.js';
+import { baked, frameSize } from '../src/render/frames/bake.js';
+
+/* An ember-themed palette. The frame data names materials rather than
+   colours, so an existing hand-drawn pose renders in any palette -- this is
+   the same mechanism that makes mirror matches read blue against red. */
+const FIRE = {
+  // gi: cooling embers, five steps from char to flare
+  giLo2:  '#2a0a04', giLo:  '#4a1208', gi:   '#9c2b18',
+  giHi:   '#e05a24', giHi2: '#ff8c3c',
+  // skin is not skin on this character -- every exposed limb is burning, so
+  // the "skin" ramp is a flame ramp and no bare hand can show through
+  skinLo2: '#7a1c04', skinLo: '#c23a08', skin: '#ff7a14',
+  skinHi:  '#ffc44c', skinHi2:'#fff0b0',
+  // hair burning outright
+  hairLo: '#a83c08', hair: '#ff8a1e', hairHi: '#ffd45c', hairHi2: '#fff6d0',
+  band:   '#ffd45c', bandHi: '#fff0b0', bandLo: '#b8791a',
+  // the fists are the hottest thing on the sprite
+  gloveLo2:'#8c1c06', gloveLo:'#e04a10', glove:'#ff9c1e',
+  gloveHi: '#ffe07c', gloveHi2:'#fff6d0',
+  rim:    '#ff5a2a',
+};
+
+const SCALE = 4;                       // buffer pixel -> screen pixel
+const BW = 288, BH = 208;              // low-res buffer
+const buf = document.createElement('canvas');
+buf.width = BW; buf.height = BH;
+const b = buf.getContext('2d');
+b.imageSmoothingEnabled = false;
+
+const R = (x, y, w, h, c) => { b.fillStyle = c; b.fillRect(x | 0, y | 0, w | 0, h | 0); };
+
+/* ---- background: a dark forge, lit from where the punch lands ---- */
+for (let y = 0; y < BH; y++) {
+  const t = y / BH;
+  R(0, y, BW, 1, `rgb(${18 + t * 26 | 0}, ${10 + t * 10 | 0}, ${16 + t * 12 | 0})`);
+}
+function glow(cx, cy, r, rgb, steps = 7, a = 0.055) {
+  for (let i = steps; i >= 1; i--) {
+    const rr = (r * i) / steps;
+    b.fillStyle = `rgba(${rgb}, ${a})`;
+    b.beginPath();
+    for (let y = -rr; y <= rr; y++) {
+      const span = Math.floor(Math.sqrt(Math.max(0, rr * rr - y * y)) + 0.5);
+      if (span > 0) b.fillRect((cx - span) | 0, (cy + y) | 0, span * 2 + 1, 1);
+    }
+    b.fill();
+  }
+}
+
+/* ---- the figure: KAI's punch-active frame, wearing the ember palette ---- */
+const sheet = SHEETS.kai;
+const punch = sheet.punch.active || sheet.punch;
+const size = frameSize(punch);
+/* baked() hands back { canvas, ax, ay } -- the anchor is padded by one pixel
+   in each direction to leave the keyline somewhere to land. */
+const sprite = baked('fire-concept-punch', punch, FIRE);
+
+const FX = 74;                                 // where the fighter's feet land
+const FY = BH - 22;
+// the lead glove sits near the far edge of the frame, at about shoulder height
+const fistX = FX + Math.round((size.w - punch.ax) * 0.84);
+const fistY = FY - Math.round(size.h * 0.60);
+
+glow(fistX + 16, fistY + 8, 120, '255, 120, 30', 9, 0.05);
+glow(fistX + 16, fistY + 8, 54, '255, 200, 90', 6, 0.06);
+
+/* floor, catching the light */
+R(0, FY + 1, BW, BH - FY, '#180d10');
+for (let i = 0; i < 220; i++) {
+  const x = Math.random() * BW, y = FY + 2 + Math.random() * (BH - FY - 2);
+  const d = 1 - Math.min(1, Math.abs(x - fistX) / 150);
+  R(x, y, 1 + (Math.random() * 2 | 0), 1,
+    Math.random() < 0.25 + d * 0.5 ? '#3a1c14' : '#241014');
+}
+R(0, FY, BW, 1, '#6b3520');
+
+b.drawImage(sprite.canvas, FX - sprite.ax, FY - sprite.ay);
+
+/* ---- the fire itself: layered tongues, hot core outward ---- */
+function tongue(cx, cy, w, h, lean, col) {
+  for (let i = 0; i < h; i++) {
+    const t = i / h;
+    // narrow toward the tip, drift with the lean, wobble on the way up
+    const ww = Math.max(1, Math.round(w * (1 - t * t) + Math.sin(t * 7 + cx) * 1.2));
+    const off = Math.round(lean * t * t * h * 0.5 + Math.sin(t * 5 + cy) * 1.6);
+    R(cx - ww + off, cy - i, ww * 2, 1, col);
+  }
+}
+function plume(cx, cy, scale, lean) {
+  tongue(cx, cy, 11 * scale, 34 * scale, lean, '#8c1c06');
+  tongue(cx, cy, 9 * scale, 30 * scale, lean, '#e04a10');
+  tongue(cx + 1, cy, 6.5 * scale, 24 * scale, lean, '#ff8c1e');
+  tongue(cx + 1, cy, 4 * scale, 17 * scale, lean, '#ffd45c');
+  tongue(cx + 2, cy, 2 * scale, 10 * scale, lean, '#fff6d0');
+}
+
+/* ---- one big fireball, thrown from the lead fist ----
+   Concentric shells with a smooth edge. The earlier version wobbled the
+   radius per angle, which just read as lumpy; a clean sphere with a hot core
+   and a few licks off the trailing edge reads far better. */
+function ell(cx, cy, rx, ry, col) {
+  for (let y = -ry; y <= ry; y++) {
+    const span = Math.floor(rx * Math.sqrt(Math.max(0, 1 - (y * y) / (ry * ry))) + 0.5);
+    if (span > 0) R(cx - span, cy + y, span * 2 + 1, 1, col);
+  }
+}
+
+/* A hand swallowed whole by flame: nested shells rather than separate licks,
+   so the fire reads as covering the hand instead of sprouting from it. */
+function burningHand(cx, cy, r) {
+  ell(cx, cy, r, r * 1.05, '#8c1c06');
+  ell(cx, cy - 1, r * 0.80, r * 0.86, '#e04a10');
+  ell(cx + 1, cy - 2, r * 0.56, r * 0.62, '#ff8c1e');
+  ell(cx + 1, cy - 3, r * 0.32, r * 0.36, '#ffd45c');
+  ell(cx + 2, cy - 4, r * 0.15, r * 0.18, '#fff6d0');
+  for (let i = 0; i < 4; i++) {
+    const a = -0.4 - i * 0.5;
+    tongue(cx + Math.cos(a) * r * 0.7, cy + Math.sin(a) * r * 0.7,
+           2.6, 8 + (i % 2) * 4, Math.cos(a) * 0.9, i % 2 ? '#ff8c1e' : '#ffd45c');
+  }
+}
+
+/* A forearm sleeved in fire: overlapping shells down its length. */
+function burningArm(x0, y0, x1, y1, r0, r1) {
+  const n = 9;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
+    const r = r0 + (r1 - r0) * t;
+    ell(x, y, r, r * 0.92, '#8c1c06');
+  }
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t - 1;
+    const r = (r0 + (r1 - r0) * t) * 0.72;
+    ell(x, y, r, r * 0.9, '#e04a10');
+  }
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const x = x0 + (x1 - x0) * t + 1, y = y0 + (y1 - y0) * t - 2;
+    const r = (r0 + (r1 - r0) * t) * 0.44;
+    ell(x, y, r, r * 0.88, '#ff8c1e');
+  }
+  for (let i = 0; i <= n; i += 2) {
+    const t = i / n;
+    tongue(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t - (r0 + (r1 - r0) * t),
+           2.2, 7 + (i % 3) * 3, -0.3, '#ffd45c');
+  }
+}
+
+function disc(cx, cy, r, col) {
+  for (let y = -r; y <= r; y++) {
+    const span = Math.floor(Math.sqrt(Math.max(0, r * r - y * y)) + 0.5);
+    if (span > 0) R(cx - span, cy + y, span * 2 + 1, 1, col);
+  }
+}
+function fireball(cx, cy, r) {
+  disc(cx, cy, r, '#8c1c06');                    // charred rim
+  disc(cx, cy, Math.round(r * 0.90), '#e04a10');
+  disc(cx, cy, Math.round(r * 0.72), '#ff8c1e');
+  // core sits slightly forward, so the ball reads as travelling
+  disc(cx + 2, cy - 1, Math.round(r * 0.48), '#ffd45c');
+  disc(cx + 3, cy - 1, Math.round(r * 0.26), '#fff6d0');
+  disc(cx + 3, cy - 1, Math.round(r * 0.12), '#ffffff');
+
+  // a thin bright limb on the leading edge
+  for (let a = -0.9; a <= 0.9; a += 0.04) {
+    R(cx + Math.cos(a) * (r - 1), cy + Math.sin(a) * (r - 1), 1, 1, '#ffb03c');
+  }
+  // five licks trailing off the back, evenly placed rather than random
+  for (let i = 0; i < 5; i++) {
+    const a = Math.PI * (0.70 + i * 0.15);
+    tongue(cx + Math.cos(a) * r * 0.95, cy + Math.sin(a) * r * 0.95,
+           3.5, 13 + (i % 2) * 5, Math.cos(a) * 1.2, i % 2 ? '#ff8c1e' : '#e04a10');
+  }
+}
+
+const BALL_R = 27;
+fireball(fistX + 18, fistY + 8, BALL_R);
+
+/* ---- both arms alight ---- */
+function armFire(x0, y0, x1, y1, scale) {
+  const n = 7;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const x = x0 + (x1 - x0) * t;
+    const y = y0 + (y1 - y0) * t;
+    plume(x, y, scale * (0.32 + t * 0.28), (Math.random() - 0.5) * 0.7);
+  }
+}
+// lead arm: a sleeve of fire from the elbow, thickening into the fist
+burningArm(FX + 40, FY - 92, fistX - 8, fistY + 8, 5, 9);
+burningHand(fistX - 2, fistY + 8, 12);
+// rear arm, tucked at the hip, and its fist swallowed the same way
+burningArm(FX - 16, FY - 76, FX - 10, FY - 60, 4, 6);
+burningHand(FX - 8, FY - 54, 10);
+
+/* ---- the head is fire, not a face with flames on it ----
+   The sprite's own skull is painted over completely: a flame body wide enough
+   to cover it, rising into tongues, with two dark voids where eyes would be.
+   Those voids are what stop it reading as an anonymous blob. */
+const HEAD_X = FX + 10, HEAD_Y = FY - 114;
+
+function flameHead(cx, cy) {
+  /* Built from rounded shells. The previous version stacked spans that
+     narrowed toward the crown, which is simply a triangle -- it read as a
+     cone pasted over the face rather than as a head that is on fire. */
+  ell(cx, cy, 15, 19, '#8c1c06');
+  ell(cx + 1, cy - 1, 12.5, 16, '#e04a10');
+  ell(cx + 1, cy - 2, 9.5, 12.5, '#ff8c1e');
+  ell(cx + 2, cy - 4, 5.5, 7, '#ffd45c');
+
+  // brow and cheek suggested with a darker sweep, so it has structure
+  R(cx - 9, cy - 5, 18, 2, '#8c1c06');
+
+  // eye voids -- without these it is an anonymous blob
+  R(cx - 8, cy - 4, 6, 2, '#3d0c04');   // brow line, angled down toward the nose
+  R(cx - 7, cy - 3, 5, 3, '#3d0c04');
+  R(cx + 3, cy - 4, 6, 2, '#3d0c04');
+  R(cx + 4, cy - 3, 5, 3, '#3d0c04');
+  R(cx - 6, cy - 2, 3, 1, '#ffe07c');
+  R(cx + 5, cy - 2, 3, 1, '#ffe07c');
+
+  /* Ragged the silhouette: a clean ellipse reads as a mask, not as fire. */
+  for (let i = 0; i < 22; i++) {
+    const a = Math.PI * (0.15 + i * 0.077);
+    const rr = 14 + Math.sin(i * 2.1) * 2.5;
+    tongue(cx + Math.cos(a) * rr * 0.95, cy + Math.sin(a) * rr * 0.8,
+           2.2 + (i % 3) * 0.7, 5 + (i % 4) * 4, Math.cos(a) * 0.8,
+           i % 2 ? '#ff8c1e' : '#e04a10');
+  }
+
+  const crown = cy - 19;
+  spikeTongue(cx - 5, crown + 4, 20, -0.55, 3.0);
+  spikeTongue(cx + 2, crown + 1, 28, -0.40, 3.6);
+  spikeTongue(cx + 9, crown + 5, 22, -0.25, 2.9);
+}
+
+function spikeTongue(x, y, len, lean, w) {
+  tongue(x, y, w + 1.5, len, lean, '#a83c08');
+  tongue(x, y, w, len - 2, lean, '#ff8c1e');
+  tongue(x + 1, y, w * 0.55, len - 5, lean, '#ffd45c');
+  if (len > 14) tongue(x + 1, y, w * 0.25, len - 10, lean, '#fff6d0');
+}
+
+flameHead(HEAD_X, HEAD_Y);
+
+/* impact sparks thrown forward off the fist */
+for (let i = 0; i < 90; i++) {
+  const a = (Math.random() - 0.5) * 1.5;
+  const d = 6 + Math.random() * 62;
+  const x = fistX + 16 + Math.cos(a) * d * 1.3;
+  const y = fistY + 8 + Math.sin(a) * d * 0.8;
+  const hot = Math.random();
+  R(x, y, hot > 0.75 ? 2 : 1, 1,
+    hot > 0.8 ? '#fff6d0' : hot > 0.45 ? '#ffb03c' : '#e04a10');
+}
+
+/* embers drifting through the room */
+for (let i = 0; i < 60; i++) {
+  const x = Math.random() * BW, y = Math.random() * (BH - 40);
+  R(x, y, 1, 1, Math.random() > 0.5 ? '#ff8c1e' : '#8c3208');
+}
+
+/* ---- present, nearest-neighbour ---- */
+const outCv = document.getElementById('out');
+outCv.width = BW * SCALE;          // trim the canvas to the art, no dead margin
+outCv.height = BH * SCALE;
+const out = outCv.getContext('2d');
+out.imageSmoothingEnabled = false;
+out.drawImage(buf, 0, 0, BW, BH, 0, 0, BW * SCALE, BH * SCALE);
+window.CONCEPT_PNG = outCv.toDataURL('image/png');
+window.CONCEPT_READY = true;
+</script>
+</body>
+</html>
