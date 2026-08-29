@@ -21,11 +21,18 @@ a different shape rather than a shared template:
 |---|---|
 | **KAI** | Headband, spiky hair, heavier build |
 | **MIRA** | Ponytail, lighter build, quicker silhouette |
+| **ASH** | Flat-top fade, stubble, and hands that are permanently on fire |
 
-They share the same frame data for now — the difference is look, not moves, and the two
-builds are kept close enough that neither reads as the smaller fighter. Mirror matches
-work: the character is palette-swapped so player one is always the cool colours and
-player two the warm ones.
+KAI and MIRA share the same frame data — between them the difference is look, not
+moves. ASH is the first character with a move set of his own: every hit is a little
+lighter than theirs, but his punch **sets the opponent alight** (6 extra damage
+burning off over 2 seconds — 3 a second — refreshed rather than stacked by the next
+punch), his jab and kick are the fastest in the game, his meter fills in five hits
+instead of KAI's four kicks, and his special is a **charged fire beam** — he draws
+both hands back, gathers, and thrusts both palms forward to launch a 15-damage bolt
+across the stage instead of the spin. Mirror matches work: the character is
+palette-swapped so player one is always the cool colours and player two the warm
+ones — except ASH, who burns orange as player one and blue as player two.
 
 Each player drives the select screen from their own movement keys — left and right to
 choose, up to lock in, down to back out. The attack keys confirm too, out of arcade
@@ -83,6 +90,11 @@ strip under the game shows the track that is playing.
   seconds** — long enough to land something serious. Its reach is the same as a normal
   kick, so what you are buying is the coverage and the stun, not the range. Chip damage
   on a guard pays no meter, and a blocked special stuns nobody.
+- **ASH's special** is a charged beam instead: five landed hits fill his bar, and
+  one press draws both hands back into a visible charge before both palms thrust
+  forward and launch a bolt across the whole stage for 15 damage with a small
+  shove. The wind-up is the counterplay — it can be blocked for chip, and it never
+  burns; only his punches do that.
 - **Crouch + kick** — sweep. Slower, knocks down, and travels under a standing guard.
 - **Jump + punch/kick** — air attack. One per jump.
 - Blocking cuts a hit to chip damage, but only while grounded and turned toward the

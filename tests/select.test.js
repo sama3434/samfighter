@@ -24,9 +24,12 @@ describe('character select', () => {
 
   it('moves a cursor and wraps around the roster', () => {
     const { select, input, step } = makeSelect();
-    input.pressed.add('d');
-    step();
-    expect(select.cursor[0]).toBe(1);
+    // walk right across the whole roster: every entry, then wrap to zero
+    for (let i = 1; i < CHARACTERS.length; i++) {
+      input.pressed.add('d');
+      step();
+      expect(select.cursor[0]).toBe(i);
+    }
     input.pressed.add('d');
     step();
     expect(select.cursor[0]).toBe(0);

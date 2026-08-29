@@ -155,6 +155,6 @@ describe('character select against the computer', () => {
     input.pressed.add('arrowright');
     step();
     expect(select.cursor[0]).toBe(0);   // arrows belong to player two again
-    expect(select.cursor[1]).toBe(0);
+    expect(select.cursor[1]).toBe(2 % CHARACTERS.length);
   });
 });

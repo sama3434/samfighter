@@ -1,5 +1,3 @@
-import { MOVES } from '../moves.js';
-
 /* The skeleton, in local sprite units: x runs forward (a fighter is always
    posed facing right and mirrored when needed), y runs up from the feet.
 
@@ -26,7 +24,7 @@ export function poseOf(f, frame) {
 
   if (f.ko || f.downTimer > 0) return { kind: 'down' };
 
-  if (m === MOVES.spin) {
+  if (m && m.pose === 'spin') {
     // A spin reads as both legs out at once: one leg swept forward, the other
     // trailing behind, with the torso whipped over the supporting hip.
     const whirl = Math.sin(f.attack.t * 0.9);
@@ -60,7 +58,28 @@ export function poseOf(f, frame) {
     };
   }
 
-  if (m === MOVES.punch) {
+  if (m && m.pose === 'beam') {
+    if (f.attack.t < m.startup) {
+      // charging: both hands drawn back together at the rear hip, weight low
+      return {
+        kind: 'beam', beamPhase: 'charge',
+        hip: [-2, 46], sh: [-8, 80], head: [-6, 96],
+        bl: [[-14, 28], [-20, FEET]], fl: [[10, 28], [16, FEET]],
+        ba: [[-16, 62], [-24, 48]],
+        fa: [[-12, 60], [-22, 46]],
+      };
+    }
+    // release: both palms thrust forward together
+    return {
+      kind: 'beam', beamPhase: 'fire',
+      hip: [2, 48], sh: [2, SHOULDER], head: [0, HEAD - 2],
+      bl: [[-14, KNEE], [-22, FEET]], fl: [[14, KNEE], [24, FEET]],
+      ba: [[24, 80], [52, 78]],
+      fa: [[26, 84], [54, 82]],
+    };
+  }
+
+  if (m && m.pose === 'punch') {
     return {
       kind: 'punch', fist: 'front',
       hip: [0, 48], sh: [-2, SHOULDER], head: [2, HEAD],
@@ -70,7 +89,7 @@ export function poseOf(f, frame) {
     };
   }
 
-  if (m === MOVES.airPunch) {
+  if (m && m.pose === 'airPunch') {
     return {
       kind: 'punch', fist: 'front', airborne: true,
       hip: [0, 52], sh: [2, 88], head: [4, 106],
@@ -80,7 +99,7 @@ export function poseOf(f, frame) {
     };
   }
 
-  if (m === MOVES.kick) {
+  if (m && m.pose === 'kick') {
     return {
       kind: 'kick', strike: 'front',
       hip: [-4, 48], sh: [-12, 82], head: [-10, 100],
@@ -90,7 +109,7 @@ export function poseOf(f, frame) {
     };
   }
 
-  if (m === MOVES.airKick) {
+  if (m && m.pose === 'airKick') {
     return {
       kind: 'kick', strike: 'front', airborne: true,
       hip: [0, 52], sh: [-6, 86], head: [-4, 104],
@@ -100,7 +119,7 @@ export function poseOf(f, frame) {
     };
   }
 
-  if (m === MOVES.sweep) {
+  if (m && m.pose === 'sweep') {
     return {
       kind: 'sweep', strike: 'front',
       hip: [0, 24], sh: [-6, 54], head: [-4, 72],
