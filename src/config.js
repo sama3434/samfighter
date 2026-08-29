@@ -53,6 +53,12 @@ export const DAMAGE = {
   airPunch: 5,
   airKick: 12,
   spin: 10,
+  firePunch: 5,
+  fireKick: 8,
+  fireSweep: 8,
+  fireAirPunch: 5,
+  fireAirKick: 8,
+  fireball: 15,
 };
 
 /* What gets through a block. Chip is the thing stopping a turtling opponent
@@ -64,7 +70,31 @@ export const CHIP_DAMAGE = {
   airPunch: 1,
   airKick: 2,
   spin: 2,
+  firePunch: 1,
+  fireKick: 2,
+  fireSweep: 2,
+  fireAirPunch: 1,
+  fireAirKick: 2,
+  fireball: 3,
 };
+
+/* ---------------- burn ----------------
+
+   ASH's punches set the opponent alight: BURN_TOTAL damage spread evenly
+   over BURN_FRAMES, ticked in the simulation. A second punch refreshes the
+   burn (timer and remaining damage back to full) rather than stacking a
+   second one.
+
+   Deliberate reading of the spec: "2 damage over 2 seconds" is implemented
+   as 2 damage TOTAL across the 2 seconds. If it should be 2 damage per
+   second, set BURN_TOTAL to 4 and nothing else changes. */
+
+export const BURN_TOTAL = 2;
+export const BURN_FRAMES = 120;     // 2 seconds at 60Hz
+/* The damage lands in this many evenly spaced ticks across BURN_FRAMES.
+   Eight keeps every increment an exact binary fraction (0.25), so hp never
+   accumulates floating-point drift. */
+export const BURN_TICKS = 8;
 
 /* At or above this, a hit counts as heavy and gets longer hitstop, a bigger
    shake and hotter sparks. It is compared against DAMAGE, so if you scale

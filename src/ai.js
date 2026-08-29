@@ -44,6 +44,32 @@ export const RANGE = {
   spin: reachOf(MOVES.spin),
 };
 
+/* The computer plays whatever character it was handed, so its ranges come
+   from that fighter's own move set -- not from the global table. A slot the
+   character does not have ranges at 0 and is never pressed. A projectile
+   special is "in range" from most of the screen. */
+function rangesFor(me) {
+  const ms = me.moves;
+  const of = (slot) => (ms[slot] ? reachOf(MOVES[ms[slot]]) : 0);
+  const spec = ms.special ? MOVES[ms.special] : null;
+  return {
+    punch: of('punch'),
+    kick: of('kick'),
+    sweep: of('sweep'),
+    poke: Math.max(of('punch'), of('kick')),   // the spacing yardstick
+    special: spec ? (spec.projectile ? 6 * BW : reachOf(spec)) : 0,
+    /* how often the mix reaches for the punch when in punch range: a punch
+       that sets the opponent alight is worth leaning on */
+    punchW: ms.punch && MOVES[ms.punch].burn ? 0.72 : 0.42,
+    /* a burning-jab character wants to fight inside jab range, so its stop
+       distance closes to there; null means "use the profile's spacing" */
+    stopAt: ms.punch && MOVES[ms.punch].burn ? of('punch') - 18 : null,
+    hasKick: !!ms.kick,
+    hasSweep: !!ms.sweep,
+    hasAirKick: !!ms.airKick,
+  };
+}
+
 /* One profile per level. Frames are simulation frames at 60Hz.
 
    react/reactJit  how long after a threat appears before it responds
@@ -132,6 +158,8 @@ export class AIController {
     this.lastHpSum = null;
     this.stanceLow = false;
     this.cooldown = 0;      // frames until it is willing to swing again
+    this.range = null;      // per-character ranges, filled in on first sight
+    this.rangedFor = null;
   }
 
   roll(p) { return this.rng() < p; }
@@ -157,6 +185,11 @@ export class AIController {
 
     const me = match[this.slot];
     const foe = match[this.slot === 'p1' ? 'p2' : 'p1'];
+    if (this.rangedFor !== me.character) {
+      this.range = rangesFor(me);
+      this.rangedFor = me.character;
+    }
+    const R = this.range;
     this.t++;
 
     // the stalemate clock: reset whenever anybody's health moves
@@ -201,8 +234,8 @@ export class AIController {
     /* ---- airborne: drift in, swing once on the way down ---- */
     if (!me.onGround) {
       if (dist > 0.80 * BW) this.hold(toward);
-      if (!me.airAttackUsed && dist < RANGE.kick && me.vy > -8 && this.roll(P.airAttack)) {
-        this.press(this.roll(0.6) ? 'kick' : 'punch');
+      if (!me.airAttackUsed && dist < R.poke && me.vy > -8 && this.roll(P.airAttack)) {
+        this.press(this.roll(0.6) && R.hasAirKick ? 'kick' : 'punch');
         this.cooldown = Math.round(P.cool + this.rng() * P.coolJit);
       }
       return;
@@ -215,7 +248,7 @@ export class AIController {
         if (this.willGuard && this.guardFrames === 0) {
           this.guardFrames = (m.startup + m.active - atk.t) + 8;
         }
-      } else if (!incoming && !this.punished && this.willPunish && dist <= RANGE.kick) {
+      } else if (!incoming && !this.punished && this.willPunish && dist <= R.poke) {
         this.punished = true;         // hit the recovery of a whiffed move
         this.swing(dist, foe);
         return;
@@ -236,7 +269,7 @@ export class AIController {
         this.airReactAt = this.t + P.react + this.rng() * P.reactJit;
         this.willAntiAir = this.roll(P.antiAir);
       }
-      if (this.willAntiAir && this.t >= this.airReactAt && dist < RANGE.punch + 30) {
+      if (this.willAntiAir && this.t >= this.airReactAt && dist < R.punch + 30) {
         this.willAntiAir = false;
         this.press('punch');
         return;
@@ -246,31 +279,31 @@ export class AIController {
     }
 
     /* ---- a stunned opponent is free damage; every level takes it ---- */
-    if (foe.stunTimer > 8 && dist <= RANGE.kick) { this.swing(dist, foe); return; }
+    if (foe.stunTimer > 8 && dist <= R.poke) { this.swing(dist, foe); return; }
 
     /* ---- do not hammer a knocked-down body; take position instead ---- */
     if (foe.downTimer > 6) {
-      if (dist > RANGE.kick - 40) this.hold(toward);
+      if (dist > R.poke - 40) this.hold(toward);
       else if (dist < 1.52 * BW) this.hold(away);
       return;
     }
 
     /* ---- spend a full meter up close ---- */
-    if (me.meterFull && dist <= RANGE.spin - 12 && this.roll(P.special)) {
+    if (me.meterFull && dist <= R.special - 12 && this.roll(P.special)) {
       this.press('special');
       return;
     }
 
     /* ---- open with an attack while in range ---- */
     const pAtk = P.attack * (bored ? 2.2 : 1);
-    if (this.cooldown <= 0 && dist <= RANGE.kick + 6 && this.roll(pAtk)) {
+    if (this.cooldown <= 0 && dist <= R.poke + 6 && this.roll(pAtk)) {
       this.swing(dist, foe);
       return;
     }
 
     // the novice mashes even when nothing can connect
-    if (this.cooldown <= 0 && P.flail > 0 && dist > RANGE.kick && this.roll(P.flail)) {
-      this.press(this.roll(0.5) ? 'punch' : 'kick');
+    if (this.cooldown <= 0 && P.flail > 0 && dist > R.poke && this.roll(P.flail)) {
+      this.press(this.roll(0.5) || !R.hasKick ? 'punch' : 'kick');
       return;
     }
 
@@ -285,7 +318,7 @@ export class AIController {
   choosePlan(dist, bored, P) {
     if (bored) return 'approach';
     const r = this.rng();
-    if (dist > RANGE.kick) {
+    if (dist > this.range.poke) {
       if (r < P.approach) return 'approach';
       if (r < P.approach + P.jump && dist > 2.68 * BW && dist < 5.0 * BW) return 'jumpin';
       if (r < P.approach + P.jump + 0.25) return 'idle';
@@ -311,9 +344,13 @@ export class AIController {
     const cornered = (me.x < lo && away === 'left') || (me.x > hi && away === 'right');
 
     switch (this.plan) {
-      case 'approach':
-        if (dist > P.stopAt) this.hold(toward);
+      case 'approach': {
+        const stop = this.range.stopAt === null
+          ? P.stopAt
+          : Math.min(P.stopAt, this.range.stopAt);
+        if (dist > stop) this.hold(toward);
         break;
+      }
       case 'retreat':
         if (cornered) { this.plan = 'jumpin'; break; }
         this.hold(away);
@@ -324,7 +361,7 @@ export class AIController {
         this.plan = 'approach';   // land with intent, not with a re-roll
         break;
       case 'guard':
-        if (dist > RANGE.kick + 30) { this.plan = 'approach'; break; }
+        if (dist > this.range.poke + 30) { this.plan = 'approach'; break; }
         this.hold('block');
         if (this.stanceLow) this.hold('down');
         break;
@@ -337,20 +374,21 @@ export class AIController {
   /* Pick and press an attack for the current distance. */
   swing(dist, foe) {
     const P = this.p;
+    const R = this.range;
     this.cooldown = Math.round(P.cool + this.rng() * P.coolJit);
     // a standing guard loses to a sweep; reading that is a skill
-    if (foe.blocking && !foe.crouching && dist <= RANGE.sweep && this.roll(P.guardRead)) {
+    if (R.hasSweep && foe.blocking && !foe.crouching && dist <= R.sweep && this.roll(P.guardRead)) {
       this.hold('down');
       this.press('kick');
       return;
     }
     const r = this.rng();
-    if (dist <= RANGE.punch && r < 0.42) { this.press('punch'); return; }
-    if (dist <= RANGE.sweep && r < 0.42 + P.sweepW) {
+    if (dist <= R.punch && r < R.punchW) { this.press('punch'); return; }
+    if (R.hasSweep && dist <= R.sweep && r < R.punchW + P.sweepW) {
       this.hold('down');
       this.press('kick');
       return;
     }
-    this.press('kick');
+    this.press(R.hasKick ? 'kick' : 'punch');
   }
 }

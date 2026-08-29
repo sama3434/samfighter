@@ -1,5 +1,5 @@
 import * as C from './config.js';
-import { resolveHits, separate } from './combat.js';
+import { resolveHits, separate, spawnProjectile, stepProjectile, resolveProjectileHit } from './combat.js';
 
 const SILENT = { punch() {}, kick() {}, block() {}, whiff() {}, ko() {}, bell() {} };
 
@@ -23,6 +23,7 @@ export class Match {
     this.hitstop = 0;
     this.shake = 0;
     this.particles = [];
+    this.projectiles = [];
     this.stageStart = 0;
     this.stage = stages[0];
     this.onStageChange = null;
@@ -50,6 +51,7 @@ export class Match {
     this.banner = 'ROUND ' + this.round;
     this.sub = this.stage.name;
     this.particles.length = 0;
+    this.projectiles.length = 0;
     this.sound.bell();
   }
 
@@ -95,6 +97,45 @@ export class Match {
     }
   }
 
+  /* Launch, fly and land any travelling attacks. A projectile move spawns
+     its projectile once, on the first frame past its startup; from there the
+     projectile is on its own -- it outlives even the attack animation. */
+  updateProjectiles() {
+    for (const f of [this.p1, this.p2]) {
+      const a = f.attack;
+      if (a && a.move.projectile && !a.launched && a.t >= a.move.startup) {
+        a.launched = true;
+        this.projectiles.push(spawnProjectile(f));
+        this.sound.whiff();
+      }
+    }
+    if (!this.projectiles.length) return;
+    for (const pr of this.projectiles) {
+      stepProjectile(pr);
+      const target = pr.ownerSlot === 'p1' ? this.p2 : this.p1;
+      resolveProjectileHit(pr, target, (h) => this.onHit(h));
+    }
+    this.projectiles = this.projectiles.filter((pr) => !pr.dead);
+  }
+
+  /* A burning fighter sheds embers -- presentation only, but it lives here
+     with the other particles so the renderer stays dumb. */
+  burnEmbers() {
+    for (const f of [this.p1, this.p2]) {
+      if (f.burnTimer > 0 && this.frame % 4 === 0) {
+        this.particles.push({
+          x: f.x + (Math.random() - 0.5) * 70,
+          y: f.y - 40 - Math.random() * 200,
+          vx: (Math.random() - 0.5) * 1.2,
+          vy: -1.5 - Math.random() * 1.5,
+          life: 12 + Math.random() * 10,
+          max: 30,
+          colour: Math.random() < 0.5 ? '#ff8c1e' : '#ffd45c',
+        });
+      }
+    }
+  }
+
   /* One simulation tick. */
   update(input) {
     const { p1, p2 } = this;
@@ -129,6 +170,8 @@ export class Match {
         separate(p1, p2);
         resolveHits(p1, p2, (h) => this.onHit(h));
         resolveHits(p2, p1, (h) => this.onHit(h));
+        this.updateProjectiles();
+        this.burnEmbers();
 
         this.clock--;
         if (p1.ko || p2.ko) {

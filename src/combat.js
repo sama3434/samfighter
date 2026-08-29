@@ -40,6 +40,71 @@ export function resolveHits(attacker, defender, fx) {
   return hit;
 }
 
+/* ---------------- projectiles ----------------
+
+   A travelling attack: spawned by a move with a `projectile` block, it moves
+   in a straight line, hits at most once, and expires off the edge of the
+   playfield. Plain data, stepped by the match -- nothing here touches a
+   canvas, so a projectile match replays headlessly like everything else. */
+
+/** Build the projectile a fighter's current attack launches. */
+export function spawnProjectile(owner) {
+  const m = owner.attack.move;
+  const pr = m.projectile;
+  return {
+    move: m,
+    ownerSlot: owner.slot,
+    x: owner.x + owner.facing * pr.spawnX,
+    y: owner.y + pr.spawnY,
+    vx: owner.facing * pr.speed,
+    w: pr.w,
+    h: pr.h,
+    age: 0,
+    dead: false,
+  };
+}
+
+/** One flight tick. Expires once fully outside the playfield. */
+export function stepProjectile(p) {
+  p.x += p.vx;
+  p.age++;
+  if (p.x < -p.w || p.x > C.W + p.w) p.dead = true;
+}
+
+export function projectileBox(p) {
+  return { x: p.x - p.w / 2, y: p.y - p.h / 2, w: p.w, h: p.h };
+}
+
+/* Resolve one projectile against the defender. Same contract as
+   resolveHits: `fx` gets the presentation side, the hit description (or
+   null) comes back. The projectile dies on contact, blocked or not. */
+export function resolveProjectileHit(p, defender, fx) {
+  if (p.dead || defender.ko) return null;
+  const box = projectileBox(p);
+  if (!overlaps(box, defender.hurtbox())) return null;
+
+  p.dead = true;
+  const m = p.move;
+  const dir = p.vx >= 0 ? 1 : -1;
+
+  // guard rules match a melee hit: turned toward the incoming attack, and a
+  // projectile is never a low, so a standing guard covers it
+  const facingIt = (defender.x - p.x) * defender.facing < 0;
+  const blocked = defender.blocking && facingIt && defender.downTimer === 0;
+
+  defender.takeHit(m, dir, blocked);
+
+  const hit = {
+    move: m,
+    blocked,
+    x: dir > 0 ? box.x + box.w : box.x,
+    y: box.y + box.h / 2,
+    heavy: m.dmg >= C.HEAVY_HIT_DAMAGE,
+  };
+  if (fx) fx(hit);
+  return hit;
+}
+
 /* Fighters are solid: push them apart if they end a frame overlapping. */
 export function separate(a, b) {
   if (a.ko || b.ko) return;

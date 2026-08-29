@@ -52,10 +52,12 @@ function limbTail(x0, y0, x1, y1, w0, w1, base, hi) {
 }
 
 function foot(x, y, p, striking) {
+  // feet use the face ramp: on most characters it equals the skin ramp, but
+  // on a character whose "skin" is a flame ramp the feet must stay human
   const w = striking ? 17 : 15;
-  rect(x - 5, y, w, 7, p.skinLo);          // sole resting on the floor
-  rect(x - 4, y + 1, w - 2, 5, p.skin);
-  rect(x + w - 9, y + 2, 4, 3, p.skinHi);  // instep catching the light
+  rect(x - 5, y, w, 7, p.faceLo || p.skinLo);   // sole resting on the floor
+  rect(x - 4, y + 1, w - 2, 5, p.face || p.skin);
+  rect(x + w - 9, y + 2, 4, 3, p.faceHi || p.skinHi);  // instep catching the light
 }
 
 function fist(x, y, p, big) {
@@ -69,8 +71,8 @@ function fist(x, y, p, big) {
 
 function head(x, y, p, pose, build, frame) {
   // neck first, so the jaw overlaps it
-  rect(x - 4, y - 16, 10, 8, p.skinLo);
-  rect(x - 3, y - 16, 7, 8, p.skin);
+  rect(x - 4, y - 16, 10, 8, (p.faceLo || p.skinLo));
+  rect(x - 3, y - 16, 7, 8, (p.face || p.skin));
 
   // hair mass sits behind and above the face
   circle(x - 2, y + 2, 14, p.hair);
@@ -86,20 +88,20 @@ function head(x, y, p, pose, build, frame) {
     rect(x - 17, y + 5, 7, 1, p.bandLo);
   }
 
-  circle(x + 2, y, 13, p.skinLo);
-  circle(x + 3, y + 1, 12, p.skin);
-  circle(x + 6, y + 4, 6, p.skinHi);
+  circle(x + 2, y, 13, (p.faceLo || p.skinLo));
+  circle(x + 3, y + 1, 12, (p.face || p.skin));
+  circle(x + 6, y + 4, 6, (p.faceHi || p.skinHi));
 
   // ear
-  rect(x - 6, y + 1, 4, 6, p.skinLo);
-  rect(x - 5, y + 2, 2, 3, p.skin);
+  rect(x - 6, y + 1, 4, 6, (p.faceLo || p.skinLo));
+  rect(x - 5, y + 2, 2, 3, (p.face || p.skin));
 
   // brow, eye, nose, mouth -- a face reads only if the features are separated
   rect(x + 5, y + 5, 7, 2, p.hairHi);
   rect(x + 6, y + 1, 3, 3, '#ffffff');
   rect(x + 7, y + 1, 2, 2, '#241d33');
-  rect(x + 11, y - 1, 2, 3, p.skinLo);
-  rect(x + 5, y - 5, 5, 1, pose.kind === 'hurt' ? '#8a3a3a' : p.skinLo);
+  rect(x + 11, y - 1, 2, 3, (p.faceLo || p.skinLo));
+  rect(x + 5, y - 5, 5, 1, pose.kind === 'hurt' ? '#8a3a3a' : (p.faceLo || p.skinLo));
 
   if (build.headband) {
     // headband across the brow, ties trailing behind
@@ -177,7 +179,7 @@ export function paintBody(f, frame) {
     fist(-2, 34, p, false);
     limb(-12, 14, -22, 14, 11, 10, p.skin, p.skinHi, p.skinLo);
     circle(-30, 16, 13, p.hair);
-    circle(-28, 15, 11, p.skin);
+    circle(-28, 15, 11, p.face || p.skin);
     rect(-33, 21, 18, 4, p.band);
     line(-33, 23, -46, 20, 3, p.band);
     rect(-26, 14, 6, 2, '#241d33');      // eyes shut

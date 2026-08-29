@@ -61,9 +61,11 @@ function meterBar(f, side, frame) {
     pxRect(pctx, fx, y + h - 2, fillW, 2, flash ? '#ffd23f' : '#1f7f96');
   }
 
-  // quarter ticks: one kick per segment, so the fill is countable
-  for (let i = 1; i < 4; i++) {
-    pxRect(pctx, x + Math.round((w * i) / 4), y, 1, h, '#0d0812');
+  // segment ticks, so the fill is countable: one kick per quarter for most
+  // of the roster; a character can declare its own count (ASH: five hits)
+  const ticks = f.character.meterTicks || 4;
+  for (let i = 1; i < ticks; i++) {
+    pxRect(pctx, x + Math.round((w * i) / ticks), y, 1, h, '#0d0812');
   }
 
   const label = full ? `SPECIAL READY  ${side === 'left' ? 'Q' : 'M'}` : 'SPECIAL';

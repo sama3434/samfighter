@@ -1,5 +1,6 @@
 import { KAI } from './kai.js';
 import { MIRA } from './mira.js';
+import { ASH } from './ash.js';
 
 /* The registry: which hand-drawn frame, if any, answers a pose.
 
@@ -8,7 +9,7 @@ import { MIRA } from './mira.js';
    so the game stays playable while the set is incomplete and new frames can
    land one at a time. */
 
-export const SHEETS = { kai: KAI, mira: MIRA };
+export const SHEETS = { kai: KAI, mira: MIRA, ash: ASH };
 
 const TAU = Math.PI * 2;
 

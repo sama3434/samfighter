@@ -31,6 +31,16 @@ export const GLYPHS = {
   x: { key: 'skinLo' },
   z: { key: 'skinLo2' },
 
+  /* face, five steps. Most characters set the face ramp to the same tones
+     as the skin ramp and the two are interchangeable. They exist separately
+     for characters whose "skin" is not skin -- ASH's limbs burn, so his skin
+     ramp is a flame ramp, and only the face ramp keeps him human. */
+  Y: { key: 'faceHi2' },
+  F: { key: 'faceHi' },
+  f: { key: 'face' },
+  y: { key: 'faceLo' },
+  j: { key: 'faceLo2' },
+
   // hair, four steps
   D: { key: 'hairHi2' },      // the anime sheen band
   H: { key: 'hairHi' },
