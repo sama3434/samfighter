@@ -104,16 +104,18 @@ export const MOVES = {
     meterGain: 20,
   },
 
-  /* The super: one big fireball. The move itself has no melee hitbox -- at
-     the end of its startup it launches a projectile that travels, hits once,
-     and expires (match.js owns the flight; combat.js resolves the hit).
-     Big damage, deliberately small knockback. */
-  fireball: {
-    key: 'fireball', pose: 'fireball', startup: 14, active: 8, recovery: 20,
-    dmg: DAMAGE.fireball, reach: 0, top: -240, h: 90,
-    kb: 6, kbY: 0, hitstun: 20, blockstun: 12, chip: CHIP_DAMAGE.fireball, tone: 'punch',
+  /* The super: a two-handed charged beam. He draws both hands back
+     together and charges through the long startup, then thrusts both palms
+     forward -- the release launches a travelling bolt from between them.
+     The move itself has no melee hitbox (match.js owns the flight;
+     combat.js resolves the hit). Big damage, deliberately small knockback;
+     the visible charge is the counterplay window. */
+  fireBeam: {
+    key: 'fireBeam', pose: 'beam', startup: 22, active: 8, recovery: 20,
+    dmg: DAMAGE.fireBeam, reach: 0, top: -240, h: 90,
+    kb: 6, kbY: 0, hitstun: 20, blockstun: 12, chip: CHIP_DAMAGE.fireBeam, tone: 'punch',
     cost: 100, meterGain: 0,
-    projectile: { speed: 15, w: 100, h: 100, spawnX: 95, spawnY: -195 },
+    projectile: { speed: 16, w: 120, h: 66, spawnX: 100, spawnY: -180 },
   },
 };
 

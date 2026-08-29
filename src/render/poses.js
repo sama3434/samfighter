@@ -58,14 +58,24 @@ export function poseOf(f, frame) {
     };
   }
 
-  if (m && m.pose === 'fireball') {
-    // the super: both palms driven forward together, weight on the front leg
+  if (m && m.pose === 'beam') {
+    if (f.attack.t < m.startup) {
+      // charging: both hands drawn back together at the rear hip, weight low
+      return {
+        kind: 'beam', beamPhase: 'charge',
+        hip: [-2, 46], sh: [-8, 80], head: [-6, 96],
+        bl: [[-14, 28], [-20, FEET]], fl: [[10, 28], [16, FEET]],
+        ba: [[-16, 62], [-24, 48]],
+        fa: [[-12, 60], [-22, 46]],
+      };
+    }
+    // release: both palms thrust forward together
     return {
-      kind: 'punch', fist: 'front',
+      kind: 'beam', beamPhase: 'fire',
       hip: [2, 48], sh: [2, SHOULDER], head: [0, HEAD - 2],
       bl: [[-14, KNEE], [-22, FEET]], fl: [[14, KNEE], [24, FEET]],
-      ba: [[6 + 18 * e, 78], [14 + 38 * e, 76]],
-      fa: [[8 + 22 * e, 82], [18 + 44 * e, 80]],
+      ba: [[24, 80], [52, 78]],
+      fa: [[26, 84], [54, 82]],
     };
   }
 

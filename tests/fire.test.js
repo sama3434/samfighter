@@ -114,13 +114,13 @@ describe('ASH: the fire punch and the burn', () => {
 });
 
 describe('ASH: kick and meter', () => {
-  it('his kick deals 8, from config, with his own frame data', () => {
-    expect(C.DAMAGE.fireKick).toBe(8);
+  it('his kick deals 9, from config, with his own frame data', () => {
+    expect(C.DAMAGE.fireKick).toBe(9);
     const { p1, p2, input, step } = makeFireMatch();
     p1.x = 400; p2.x = 520;
     input.pressed.add('g');
     step(1); step(MOVES.fireKick.startup + MOVES.fireKick.active + 2);
-    expect(C.MAX_HP - p2.hp).toBe(8);
+    expect(C.MAX_HP - p2.hp).toBe(9);
     expect(p2.burnTimer).toBe(0);                   // only punches burn
   });
 
@@ -152,11 +152,21 @@ describe('ASH: kick and meter', () => {
   });
 });
 
-describe('ASH: the fireball', () => {
+describe('ASH: the beam', () => {
   it('deals 15 with small knockback, per config', () => {
-    expect(C.DAMAGE.fireball).toBe(15);
-    expect(MOVES.fireball.cost).toBe(C.METER_MAX);
-    expect(MOVES.fireball.kb).toBeLessThan(MOVES.punch.kb);   // small knockback
+    expect(C.DAMAGE.fireBeam).toBe(15);
+    expect(MOVES.fireBeam.cost).toBe(C.METER_MAX);
+    expect(MOVES.fireBeam.kb).toBeLessThan(MOVES.punch.kb);   // small knockback
+  });
+
+  it('charges visibly before it fires', () => {
+    // the long two-handed wind-up is the counterplay window
+    expect(MOVES.fireBeam.startup).toBeGreaterThan(MOVES.fireKick.startup * 2);
+  });
+
+  it('burn pays 3 damage per second for 2 seconds', () => {
+    expect(C.BURN_TOTAL).toBe(6);
+    expect(C.BURN_FRAMES).toBe(120);
   });
 
   it('spends the whole meter and launches a projectile that travels', () => {
@@ -164,9 +174,9 @@ describe('ASH: the fireball', () => {
     p1.meter = C.METER_MAX;
     input.pressed.add('q');
     step(1);
-    expect(p1.attack.move).toBe(MOVES.fireball);
+    expect(p1.attack.move).toBe(MOVES.fireBeam);
     expect(p1.meter).toBe(0);
-    step(MOVES.fireball.startup);
+    step(MOVES.fireBeam.startup);
     expect(match.projectiles.length).toBe(1);
     const x0 = match.projectiles[0].x;
     step(3);
@@ -180,7 +190,7 @@ describe('ASH: the fireball', () => {
     input.pressed.add('q');
     step(1); step(60);
     expect(C.MAX_HP - p2.hp).toBe(15);
-    expect(p2.burnTimer).toBe(0);                   // the fireball is not a punch
+    expect(p2.burnTimer).toBe(0);                   // the beam is not a punch
     expect(match.projectiles.length).toBe(0);
     expect(p2.hp).toBeGreaterThan(0);
   });
@@ -205,7 +215,7 @@ describe('ASH: the fireball', () => {
     step(2);
     input.pressed.add('q');
     step(1); step(60);
-    expect(C.MAX_HP - p2.hp).toBe(C.CHIP_DAMAGE.fireball);
+    expect(C.MAX_HP - p2.hp).toBe(C.CHIP_DAMAGE.fireBeam);
     expect(p2.burnTimer).toBe(0);
   });
 
@@ -214,7 +224,7 @@ describe('ASH: the fireball', () => {
     p1.x = 300; p2.x = 800;
     p1.meter = C.METER_MAX;
     input.pressed.add('q');
-    step(1); step(MOVES.fireball.startup + 1);
+    step(1); step(MOVES.fireBeam.startup + 1);
     expect(match.projectiles.length).toBe(1);
     p2.y = 150; p2.onGround = false; p2.vy = 0;     // held out of the flight path
     const hold = () => { p2.y = 150; p2.vy = 0; };

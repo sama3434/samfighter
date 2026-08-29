@@ -1,6 +1,6 @@
 import { W, H } from '../config.js';
 import { pctx, wp, present } from '../pixel/buffer.js';
-import { pxDot, pxRect, pxCircle } from '../pixel/draw.js';
+import { pxDot, pxRect, pxEllipse } from '../pixel/draw.js';
 import { stageCanvas, drawOverlay } from '../stages/index.js';
 import { drawFighter } from './sprite.js';
 import { drawHud, drawBanner } from './hud.js';
@@ -19,31 +19,41 @@ function drawParticles(match) {
   }
 }
 
-/* A travelling fireball: concentric shells, hot core sitting forward so the
-   ball reads as moving, licks trailing off the back. The shells take the
-   owner's skin ramp -- which for a fire character is a flame ramp -- so
-   player one's fire is orange and player two's is blue with no extra data. */
+/* A travelling beam bolt: a horizontal streak of layered flame, deep red at
+   the rim, near-white down the core, with crackle above and below and a
+   tail streaming off the back. The layers take the owner's skin ramp --
+   which for a fire character is a flame ramp -- so player one's bolt is
+   orange and player two's is blue with no extra data. */
 function drawProjectiles(match) {
   for (const pr of match.projectiles) {
     const owner = pr.ownerSlot === 'p1' ? match.p1 : match.p2;
     const p = owner.character.palettes[owner.slot];
     const x = wp(pr.x), y = wp(pr.y);
     const dir = pr.vx >= 0 ? 1 : -1;
-    const flick = (match.frame >> 2) % 2;      // slow breathing, not strobe
-    const r = wp(pr.w) / 2 - 1 + flick;
+    const flick = (match.frame >> 1) % 2;          // fast shimmer down the core
+    const rx = wp(pr.w) / 2, ry = wp(pr.h) / 2;
 
-    pxCircle(pctx, x, y, r, p.skinLo2);
-    pxCircle(pctx, x - dir, y, r - 2, p.skinLo);
-    pxCircle(pctx, x + dir, y, r - 5, p.skin);
-    pxCircle(pctx, x + dir * 3, y - 1, Math.max(2, r - 10), p.skinHi);
-    pxCircle(pctx, x + dir * 5, y - 1, Math.max(1, r - 15), p.skinHi2);
-
-    // licks trailing off the back edge
-    for (let i = 0; i < 4; i++) {
-      const ly = y - 6 + i * 4 + ((match.frame >> 1) + i) % 3;
-      const lw = 5 + ((i + flick) % 3) * 3;
-      const lx = dir > 0 ? x - r - lw + 2 : x + r - 2;
+    // tail: streamers peeling off the back edge
+    for (let i = 0; i < 5; i++) {
+      const ly = y - ry + 2 + i * Math.max(2, ((ry * 2 - 4) / 4 | 0));
+      const lw = 6 + (((i * 5 + (match.frame >> 2)) % 3) * 5);
+      const lx = dir > 0 ? x - rx - lw + 3 : x + rx - 3;
       pxRect(pctx, lx, ly, lw, 2, i % 2 ? p.skinLo : p.skin);
+    }
+
+    pxEllipse(pctx, x, y, rx, ry + flick, p.skinLo2);
+    pxEllipse(pctx, x, y, rx - 2, ry - 2 + flick, p.skinLo);
+    pxEllipse(pctx, x + dir, y, rx - 4, ry - 5, p.skin);
+    pxEllipse(pctx, x + dir * 3, y, rx - 8, ry - 8, p.skinHi);
+    // the core: a hard bright lance with a white leading tip
+    pxRect(pctx, x - (rx - 8) + (flick ? 1 : 0), y - 2, (rx - 8) * 2, 4, p.skinHi2);
+    pxRect(pctx, dir > 0 ? x + rx - 9 : x - rx + 3, y - 1, 6, 2, '#ffffff');
+
+    // crackle riding the bolt
+    for (let i = 0; i < 4; i++) {
+      const cx = x - rx + 6 + ((i * 13 + (match.frame >> 1) * 5) % (rx * 2 - 10));
+      const above = (i + (match.frame >> 2)) % 2 === 0;
+      pxRect(pctx, cx, above ? y - ry - 2 : y + ry + 1, 2, 2, i % 2 ? p.skinHi : p.skin);
     }
   }
 }

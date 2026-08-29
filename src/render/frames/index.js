@@ -90,6 +90,11 @@ export function frameFor(f, pose, tick) {
       if (got) hit = { frame: got.frame, tag: `sweep-${got.tag}` };
       break;
     }
+    case 'beam': {
+      const got = attackFrame(sheet.beam, f.attack);
+      if (got) hit = { frame: got.frame, tag: `beam-${got.tag}` };
+      break;
+    }
     case 'hurt':
       if (sheet.hurt) hit = { frame: sheet.hurt, tag: 'hurt' };
       break;
