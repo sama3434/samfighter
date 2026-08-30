@@ -3,6 +3,7 @@ import { Fighter } from './fighter.js';
 import { Match } from './match.js';
 import { SelectScreen } from './select.js';
 import { ModeScreen } from './mode.js';
+import { TitleScreen } from './title.js';
 import { AIController } from './ai.js';
 import { CHARACTERS } from './characters.js';
 import { SCHEMES, input, attachInput } from './input.js';
@@ -13,19 +14,21 @@ import { STAGES, warmStages, seedDrifters } from './stages/index.js';
 import { renderFrame } from './render/scene.js';
 import { renderSelect } from './render/select.js';
 import { renderMode } from './render/mode.js';
+import { renderTitle } from './render/title.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
-/* Three screens: pick a mode, pick your fighter, then fight. The select
-   screen owns the picks; the match is rebuilt from them each time so a
-   rematch can change characters. In a computer match, player two is driven
-   by an AIController writing into its own { held, pressed } pair -- the
-   fighter cannot tell the difference. */
+/* Four screens: the attract title, pick a mode, pick your fighter, then
+   fight. The select screen owns the picks; the match is rebuilt from them
+   each time so a rematch can change characters. In a computer match, player
+   two is driven by an AIController writing into its own { held, pressed }
+   pair -- the fighter cannot tell the difference. */
+const title = new TitleScreen({ schemes: SCHEMES, sound: Sound });
 const mode = new ModeScreen({ schemes: SCHEMES, sound: Sound });
 const select = new SelectScreen({ schemes: SCHEMES, roster: CHARACTERS, sound: Sound });
-let screen = 'mode';
+let screen = 'title';
 let match = null;
 let cpu = null;
 
@@ -66,6 +69,14 @@ function tick() {
      unaware that any of this exists. */
   Music.sync(screen, match);
 
+  if (screen === 'title') {
+    if (title.update(input)) {
+      mode.reset();
+      screen = 'mode';
+    }
+    return;
+  }
+
   if (screen === 'mode') {
     const choice = mode.update(input);
     if (choice) {
@@ -101,7 +112,8 @@ function tick() {
 }
 
 function draw() {
-  if (screen === 'mode') renderMode(ctx, mode);
+  if (screen === 'title') renderTitle(ctx, title);
+  else if (screen === 'mode') renderMode(ctx, mode);
   else if (screen === 'select') renderSelect(ctx, select, CHARACTERS);
   else renderFrame(ctx, match);
 }
@@ -141,5 +153,5 @@ window.SAMFIGHTER = {
   get match() { return match; },
   get screen() { return screen; },
   get cpu() { return cpu; },
-  mode, select, input, C, CHARACTERS, startMatch, Music, Sound,
+  title, mode, select, input, C, CHARACTERS, startMatch, Music, Sound,
 };
