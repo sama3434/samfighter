@@ -134,7 +134,10 @@ function drawLevelStage(state) {
 export function renderMode(ctx, state) {
   pctx.setTransform(1, 0, 0, 1, 0, 0);
   backdrop(state.frame);
-  title(state.stage === 'mode' ? 'SAM FIGHTER' : 'VS COMPUTER', 26);
+  /* Not the game's name again: the title screen has just said it in
+     letters six times this size, and repeating it here reads as the menu
+     having forgotten. The heading asks the question the screen answers. */
+  title(state.stage === 'mode' ? 'HOW WILL YOU FIGHT' : 'VS COMPUTER', 26);
   if (state.stage === 'mode') drawModeStage(state);
   else drawLevelStage(state);
   present(ctx, W, H);
